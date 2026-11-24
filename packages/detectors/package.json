@@ -1,0 +1,6 @@
+{
+  "name": "@datashield/detectors",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module"
+}
