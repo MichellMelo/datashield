@@ -45,6 +45,8 @@ describe("field report DOCX regression", () => {
     const result = detectSensitiveEntities(document);
 
     expect(result.findings).toHaveLength(72);
+    expect(result.findings.find((finding) => finding.type === "OCCURRENCE_ID")?.value)
+      .toBe("2026/118.455");
     expect(result.summary).toEqual({
       ADDRESS: 10,
       ALIAS: 10,
