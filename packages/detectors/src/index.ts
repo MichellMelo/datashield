@@ -108,7 +108,7 @@ function territorialReferenceFindings(sectionId: string, text: string): Detected
   for (const name of names) {
     let offset = 0;
     while ((offset = text.indexOf(name, offset)) !== -1) {
-      const before = offset > 0 ? text[offset - 1] : "";
+      const before = offset > 0 ? (text[offset - 1] ?? "") : "";
       const after = text[offset + name.length] ?? "";
       const isWordChar = (character: string) => character !== "" && /[\p{L}\p{N}_]/u.test(character);
       if (!isWordChar(before) && !isWordChar(after)) {
