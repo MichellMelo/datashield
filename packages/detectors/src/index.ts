@@ -38,7 +38,7 @@ function addContextFinding(sectionId: string, match: RegExpExecArray, type: Sens
   if (!value || isDataShieldPlaceholder(value)) return;
   const start = match.index + match[0].lastIndexOf(value);
   findings.push({
-    id: `${sectionId}:${start}:${type}`, type, value, sectionId, start, end: start + value.length,
+    id: sectionId + ":" + start + ":" + (start + value.length) + ":" + type, type, value, sectionId, start, end: start + value.length,
     confidence, severity, suggestedAction: "MANUAL_REVIEW", reviewed: false, reviewStatus: "PENDING",
   });
 }
@@ -73,7 +73,7 @@ function personFindingsFromRoleBlocks(sectionId: string, text: string): Detected
     const leadingWhitespace = candidate.length - candidate.trimStart().length;
     const entityStart = lines[candidateIndex]!.start + leadingWhitespace;
     findings.push({
-      id: `${sectionId}:${entityStart}:PERSON`,
+      id: sectionId + ":" + entityStart + ":" + (entityStart + value.length) + ":PERSON",
       type: "PERSON",
       value,
       sectionId,
@@ -127,7 +127,7 @@ export function detectSensitiveEntities(document: ExtractedDocument): DetectionR
       while ((match = rule.pattern.exec(section.content)) !== null) {
         const value = match[0];
         findings.push({
-          id: `${section.id}:${match.index}:${rule.type}`, type: rule.type, value, sectionId: section.id,
+          id: section.id + ":" + match.index + ":" + (match.index + value.length) + ":" + rule.type, type: rule.type, value, sectionId: section.id,
           start: match.index, end: match.index + value.length, confidence: rule.confidence, severity: rule.severity,
           ...(rule.validate ? { validation: rule.validate(value) } : {}),
           suggestedAction: "MANUAL_REVIEW", reviewed: false, reviewStatus: "PENDING",
@@ -141,7 +141,27 @@ export function detectSensitiveEntities(document: ExtractedDocument): DetectionR
     const key = `${finding.sectionId}:${finding.start}:${finding.end}:${finding.type}`;
     if (!unique.has(key)) unique.set(key, finding);
   }
-  const sorted = [...unique.values()].sort((a, b) => a.sectionId.localeCompare(b.sectionId) || a.start - b.start);
+  const candidates = [...unique.values()];
+  // Broad address context and narrative street rules may identify nested spans.
+  // Keep the widest same-category span to avoid duplicate review decisions.
+  const nonRedundant = candidates.filter((finding) => !candidates.some((other) =>
+    other !== finding
+    && other.sectionId === finding.sectionId
+    && other.type === finding.type
+    && other.start <= finding.start
+    && other.end >= finding.end
+    && (other.start < finding.start || other.end > finding.end)
+  ));
+  const sorted = nonRedundant.sort((a, b) =>
+    a.sectionId.localeCompare(b.sectionId) || a.start - b.start || a.end - b.end
+  );
+  const ids = new Set<string>();
+  for (const finding of sorted) {
+    if (ids.has(finding.id)) {
+      throw new Error("O detector gerou um identificador de achado duplicado.");
+    }
+    ids.add(finding.id);
+  }
   const types = [...new Set([...rules.map((rule) => rule.type), "RG", "ADDRESS", "ALIAS", "ORGANIZATION", "OPERATIONAL_DATA", "OCCURRENCE_ID", "OPERATIONAL_UNIT", "TEAM", "OPERATIONAL_LOCATION", "PERSON"] as SensitiveEntityType[])];
   const summary: DetectionResult["summary"] = {};
   for (const type of types) {
