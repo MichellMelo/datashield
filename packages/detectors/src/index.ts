@@ -24,9 +24,15 @@ const rules: Rule[] = [
   { type: "GPS", pattern: /\b\d{1,2}[°º]\s*\d{1,2}'\s*\d{1,2}(?:\.\d+)?["”]?\s*[NS],?\s*\d{1,3}[°º]\s*\d{1,2}'\s*\d{1,2}(?:\.\d+)?["”]?\s*[EW]\b/gi, severity: "HIGH", confidence: 0.96 },
 ];
 
+function isDataShieldPlaceholder(value: string): boolean {
+  const marker = /^\\[(?:DADO_REMOVIDO:[A-Z_]+|LOCALIZAÇÃO GENERALIZADA|IDENTIFICADOR REMOVIDO|CONTATO REMOVIDO|VEÍCULO|PROCEDIMENTO|ORGANIZAÇÃO NÃO IDENTIFICADA|IDENTIFICADOR PESSOAL|FONTE PROTEGIDA|DADO OPERACIONAL REMOVIDO)\\]$/iu;
+  const pseudonym = /^(?:Pessoa|CPF|RG|CNPJ|Telefone|Email|Local|Coordenada|Veiculo|Chassi|Procedimento|Organizacao|Codinome|Fonte|DadoOperacional)_\\d{3}$/u;
+  return marker.test(value) || pseudonym.test(value);
+}
+
 function addContextFinding(sectionId: string, match: RegExpExecArray, type: SensitiveEntityType, severity: FindingSeverity, confidence: number, findings: DetectedEntity[]) {
   const value = match[1]?.trim();
-  if (!value) return;
+  if (!value || isDataShieldPlaceholder(value)) return;
   const start = match.index + match[0].lastIndexOf(value);
   findings.push({
     id: `${sectionId}:${start}:${type}`, type, value, sectionId, start, end: start + value.length,
