@@ -393,11 +393,11 @@ program.command("sanitize")
     const independentResiduals = validateResidualContent(transformed.sections);
     const mergedResiduals = new Map<string, { type: SensitiveEntityType; value: string }>();
     for (const finding of postScan.findings) {
-      const key = \`\${finding.type}:\${finding.sectionId}:\${finding.start}:\${finding.end}\`;
+      const key = finding.type + ":" + finding.sectionId + ":" + finding.start + ":" + finding.end;
       mergedResiduals.set(key, { type: finding.type, value: finding.value });
     }
     for (const finding of independentResiduals) {
-      const key = \`\${finding.type}:\${finding.sectionId}:\${finding.start}:\${finding.end}\`;
+      const key = finding.type + ":" + finding.sectionId + ":" + finding.start + ":" + finding.end;
       mergedResiduals.set(key, { type: finding.type, value: finding.value });
     }
 
@@ -405,15 +405,15 @@ program.command("sanitize")
     const actualRemainders = countFingerprints([...mergedResiduals.values()]);
     if (!sameCounts(expectedRemainders, actualRemainders)) {
       throw new Error(
-        \`A validação encontrou \${mergedResiduals.size} candidato(s) residual(is), incluindo \${independentResiduals.length} na verificação independente. O resultado não corresponde às rejeições aprovadas. Exportação bloqueada.\`,
+        "A validação encontrou " + mergedResiduals.size + " candidato(s) residual(is), incluindo " + independentResiduals.length + " na verificação independente. O resultado não corresponde às rejeições aprovadas. Exportação bloqueada.",
       );
     }
 
     const content = [
       "[DataShield — cópia transformada para exercício; não certifica anonimização]",
-      ...transformed.sections.map((section, index) => \`### Seção \${index + 1}\\n\${section.content}\`),
+      ...transformed.sections.map((section, index) => "### Seção " + (index + 1) + "\n" + section.content),
       "",
-    ].join("\\n\\n");
+    ].join("\n\n");
     const report = {
       schemaVersion: 1,
       createdAt: new Date().toISOString(),
@@ -439,7 +439,7 @@ program.command("sanitize")
     if (!stdin.isTTY || !stdout.isTTY) {
       throw new Error("A aprovação final exige um terminal interativo. Nenhum arquivo foi exportado.");
     }
-    console.log(pc.bold("\\n=== REVISÃO FINAL DO TEXTO TRANSFORMADO ==="));
+    console.log(pc.bold("\n=== REVISÃO FINAL DO TEXTO TRANSFORMADO ==="));
     console.log(pc.yellow("Leia o conteúdo abaixo. Verifique endereços, datas, horários, nomes, referências territoriais e detalhes raros que possam identificar pessoas."));
     console.log(content);
     const approvalRl = createInterface({ input: stdin, output: stdout });
@@ -453,7 +453,6 @@ program.command("sanitize")
     if (approval !== "s" && approval !== "sim") {
       throw new Error("Exportação cancelada pelo operador. Nenhum arquivo final foi gravado.");
     }
-
     await mkdir(dirname(outputPath), { recursive: true });
     await mkdir(dirname(reportPath), { recursive: true });
     await writeFile(outputPath, content, { encoding: "utf8", flag: "wx" });
