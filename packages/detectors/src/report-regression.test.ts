@@ -41,7 +41,7 @@ const document: ExtractedDocument = {
 };
 
 describe("field report DOCX regression", () => {
-  it("detects the 83 expected occurrences, including quasi-identifiers", () => {
+  it("detects the 84 expected occurrences, including quasi-identifiers and physical descriptors", () => {
     const result = detectSensitiveEntities(document);
 
     expect(result.findings).toHaveLength(84);
