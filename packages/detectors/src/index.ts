@@ -99,7 +99,7 @@ function contextualFindings(sectionId: string, text: string): DetectedEntity[] {
     { type: "ORGANIZATION", regex: /Organização citada\s*:\s*([^\n(]{2,100})/gi, severity: "MEDIUM", confidence: 0.9 },
     { type: "OPERATIONAL_DATA", regex: /Código operacional simulado\s*:\s*([A-Z0-9_-]{4,50})/gi, severity: "HIGH", confidence: 0.99 },
     { type: "OCCURRENCE_ID", regex: /(?:Número de referência|Número da ocorrência|N[º°.]?\s*(?:da )?ocorrência|Protocolo(?: de atendimento)?|Registro(?: da ocorrência)?)\s*:?[ \t\r\n]*([A-Z0-9][A-Z0-9._/-]{5,50})/giu, severity: "HIGH", confidence: 0.99 },
-    { type: "ADDRESS", regex: /\b(?:na|pela|em)\s+((?:Rua|R\.|Avenida|Av\.?|Travessa|Tv\.?|Alameda|Praça|Pça\.?)\s+[A-ZÀ-Ý0-9][^,\n.;]{2,80}(?:,\s*(?:nas proximidades do imóvel de número|no imóvel de número|n[º°.]?)\s*\d{1,6})?)/giu, severity: "CRITICAL", confidence: 0.9 },
+    { type: "ADDRESS", regex: /\b(?:na|pela|em)\s+((?:Rua|R\.|Avenida|Av\.?|Travessa|Tv\.?|Alameda|Praça|Pça\.?)\s+[A-ZÀ-Ý0-9][^,\n.;]{2,80})/giu, severity: "CRITICAL", confidence: 0.9 },
     { type: "ADDRESS", regex: /(?:imóvel|residência|casa|apartamento)\s+de número\s+(\d{1,6})/giu, severity: "HIGH", confidence: 0.84 },
     { type: "OPERATIONAL_UNIT", regex: /(?:Unidade fictícia|Unidade responsável|Unidade policial)\s*:?\s*([\d]{1,3}ª?\s+(?:Unidade|Batalhão|Companhia|Delegacia|Distrito)\s+[A-ZÀ-Ý][^—–\n.;]{1,50})/giu, severity: "HIGH", confidence: 0.94 },
     { type: "OPERATIONAL_UNIT", regex: /\b(\d{1,3}ª?\s+(?:Unidade|Batalhão|Companhia|Delegacia|Distrito)\s+[A-ZÀ-Ý][^—–\n.;]{1,50})/giu, severity: "HIGH", confidence: 0.9 },
