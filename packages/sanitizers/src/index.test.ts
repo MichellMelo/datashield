@@ -105,7 +105,7 @@ describe("sanitizeDocument", () => {
     const input = document(source);
     const detected = detectSensitiveEntities(input);
     const transformed = sanitizeDocument(input, detected.findings, "pseudonymize");
-    const tokens = transformed.sections[0]?.content.match(/Organizacao_\\d{3}/gu) ?? [];
+    const tokens = transformed.sections[0]?.content.match(/Organizacao_\d{3}/gu) ?? [];
 
     expect(tokens).toHaveLength(2);
     expect(new Set(tokens).size).toBe(1);
@@ -121,7 +121,7 @@ describe("sanitizeDocument", () => {
     const input = document(source);
     const detected = detectSensitiveEntities(input);
     const transformed = sanitizeDocument(input, detected.findings, "pseudonymize");
-    const tokens = transformed.sections[0]?.content.match(/Organizacao_\\d{3}/gu) ?? [];
+    const tokens = transformed.sections[0]?.content.match(/Organizacao_\d{3}/gu) ?? [];
 
     expect(new Set(tokens).size).toBe(3);
     expect(transformed.identityWarnings.length).toBeGreaterThan(0);
