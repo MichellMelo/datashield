@@ -65,26 +65,29 @@ describe("detectSensitiveEntities", () => {
       expect(finding.suggestedAction).toBe("MANUAL_REVIEW");
     }
   });
-  it("detects names from Mammoth-style tab-separated table rows", () => {
+  it("detects names after blank lines in Mammoth raw text extraction", () => {
     const tableDocument: ExtractedDocument = {
       id: "table-test", format: "DOCX",
       sections: [{
         id: "table-text", type: "TEXT",
         content: [
-          "Papel\tNome fictício\tDocumento de teste\tContato de teste",
-          "Comunicante\tMarina Exemplo da Silva\tCPF: 123.456.789-00\t(85) 90000-1234",
-          "Testemunha\tRafael Modelo de Souza\tRG: TESTE-CE-000123\trafael.teste@example.com",
-          "Pessoa citada\tCarlos Demonstração Lima\tCPF: 987.654.321-00\t(85) 98888-0000"
+          "Papel", "", "Nome fictício", "", "Documento de teste", "", "Contato de teste", "",
+          "Comunicante", "", "Marina Exemplo da Silva", "", "CPF: 123.456.789-00", "", "(85) 90000-1234", "",
+          "Testemunha", "", "Rafael Modelo de Souza", "", "RG: TESTE-CE-000123", "", "rafael.teste@example.com", "",
+          "Pessoa citada", "", "Carlos Demonstração Lima", "", "CPF: 987.654.321-00", "", "(85) 98888-0000"
         ].join("\n")
       }]
     };
     const names = detectSensitiveEntities(tableDocument).findings
-      .filter((item) => item.type === "PERSON").map((item) => item.value);
-    expect(names).toEqual([
+      .filter((item) => item.type === "PERSON");
+    expect(names.map((item) => item.value)).toEqual([
       "Marina Exemplo da Silva",
       "Rafael Modelo de Souza",
       "Carlos Demonstração Lima"
     ]);
+    for (const finding of names) {
+      expect(tableDocument.sections[0]!.content.slice(finding.start, finding.end)).toBe(finding.value);
+    }
   });
 
   it("does not interpret a hyphenated reference number as a vehicle plate", () => {
