@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { readFile, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import { basename, dirname, resolve } from "node:path";
 import { createInterface } from "node:readline/promises";
 import { stdin, stdout } from "node:process";
@@ -184,6 +185,7 @@ program.command("review")
       start: number; end: number; confidence: number; severity: string;
       status: "CONFIRMED" | "REJECTED" | "PENDING";
     }> = [];
+    let quitRequested = false;
 
     console.log(pc.bold("DataShield — human review"));
     console.log(pc.yellow("Candidate values will be displayed in this terminal. Use only synthetic data or a trusted local environment."));
@@ -202,7 +204,7 @@ program.command("review")
           if (answer === "c") { status = "CONFIRMED"; break; }
           if (answer === "r") { status = "REJECTED"; break; }
           if (answer === "s") break;
-          if (answer === "q") break;
+          if (answer === "q") { quitRequested = true; break; }
           console.log("Enter c, r, s or q.");
         }
         decisions.push({
@@ -210,22 +212,18 @@ program.command("review")
           start: finding.start, end: finding.end, confidence: finding.confidence,
           severity: finding.severity, status,
         });
-        if ((await Promise.resolve(status)) === "PENDING") {
-          // A pending decision can mean skip or quit; ask only when the final candidate is not reached.
-          // The explicit quit command is handled by the flag below in the next iteration.
-        }
-        if (decisions.length < result.findings.length) {
-          // Continue to the next candidate; skipped findings remain pending in the saved report.
-        }
+        if (quitRequested) break;
       }
     } finally {
       rl.close();
     }
 
     const outputPath = resolve(options.output);
+    const sourceSha256 = createHash("sha256").update(await readFile(file)).digest("hex");
     const report = {
       schemaVersion: 1,
       sourceFile: basename(file),
+      sourceSha256,
       documentId: document.id,
       createdAt: new Date().toISOString(),
       note: "This sidecar stores decisions and text offsets only; it intentionally does not store detected values or source text.",
