@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { DetectedEntity, ExtractedDocument } from "../../core/src/index.js";
-import { sanitizeDocument } from "./index.js";
+import { detectSensitiveEntities } from "../../detectors/src/index.js";
+import { sanitizeDocument, type SanitizationMode } from "./index.js";
 
 function document(content: string): ExtractedDocument {
   return {
@@ -90,6 +91,28 @@ describe("sanitizeDocument", () => {
     expect(() => sanitizeDocument(document(source), [{ ...first, value: "XYZ999" }], "redact"))
       .toThrow(/offsets no longer match/);
   });
+
+  it.each(["redact", "pseudonymize", "generalize"] as SanitizationMode[])(
+    "does not rediscover generated placeholders after %s transformation",
+    (mode) => {
+      const source = [
+        "Organização citada: Grupo Demonstração",
+        "Apelido mencionado: Sombra",
+        "Código operacional simulado: OP-TESTE-2026-09",
+      ].join("\n");
+      const transformed = sanitizeDocument(document(source), [
+        finding(source, "Grupo Demonstração", "ORGANIZATION"),
+        finding(source, "Sombra", "ALIAS"),
+        finding(source, "OP-TESTE-2026-09", "OPERATIONAL_DATA"),
+      ], mode);
+      const rescanned = detectSensitiveEntities({
+        ...document(source),
+        sections: transformed.sections,
+      });
+
+      expect(rescanned.findings).toHaveLength(0);
+    },
+  );
 
   it("rejects findings tied to an unknown section", () => {
     const source = "Marina";
