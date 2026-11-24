@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { DetectedEntity, ExtractedDocument } from "../../core/src/index.js";
 import { detectSensitiveEntities } from "../../detectors/src/index.js";
 import { sanitizeDocument, type SanitizationMode } from "./index.js";
+import { validateResidualContent } from "./validate.js";
 
 function document(content: string): ExtractedDocument {
   return {
@@ -113,6 +114,36 @@ describe("sanitizeDocument", () => {
       expect(rescanned.findings).toHaveLength(0);
     },
   );
+
+  it("transforms the temporal and operational residuals from the classroom sample", () => {
+    const source = [
+      "18/11/2026 — 21h35",
+      "Número de referência",
+      "SIM-2026-000184",
+      "Unidade fictícia",
+      "21ª Unidade Demonstrativa — Equipe Alfa",
+      "A comunicante Marina Exemplo da Silva caminhava pela Rua das Palmeiras, nas proximidades do imóvel de número 123.",
+      "por volta das 21h20",
+      "Ponto de referência: Setor de Testes B — área fictícia",
+    ].join("\\n");
+    const input = document(source);
+    const detected = detectSensitiveEntities(input);
+    const transformed = sanitizeDocument(input, detected.findings, "pseudonymize");
+    const rescanned = detectSensitiveEntities({ ...input, sections: transformed.sections });
+    const residuals = validateResidualContent(transformed.sections);
+
+    expect(detected.findings.some((item) => item.type === "DATE_TIME")).toBe(true);
+    expect(detected.findings.some((item) => item.type === "OCCURRENCE_ID")).toBe(true);
+    expect(detected.findings.some((item) => item.type === "OPERATIONAL_UNIT")).toBe(true);
+    expect(detected.findings.some((item) => item.type === "TEAM")).toBe(true);
+    expect(detected.findings.some((item) => item.type === "OPERATIONAL_LOCATION")).toBe(true);
+    expect(rescanned.findings).toHaveLength(0);
+    expect(residuals).toHaveLength(0);
+    expect(transformed.sections[0]?.content).not.toContain("Rua das Palmeiras");
+    expect(transformed.sections[0]?.content).not.toContain("18/11/2026");
+    expect(transformed.sections[0]?.content).not.toContain("SIM-2026-000184");
+    expect(input.sections[0]?.content).toBe(source);
+  });
 
   it("rejects findings tied to an unknown section", () => {
     const source = "Marina";
