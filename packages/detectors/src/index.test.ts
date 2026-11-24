@@ -71,11 +71,11 @@ describe("detectSensitiveEntities", () => {
       sections: [{
         id: "table-text", type: "TEXT",
         content: [
-          "Papel\\tNome fictício\\tDocumento de teste\\tContato de teste",
-          "Comunicante\\tMarina Exemplo da Silva\\tCPF: 123.456.789-00\\t(85) 90000-1234",
-          "Testemunha\\tRafael Modelo de Souza\\tRG: TESTE-CE-000123\\trafael.teste@example.com",
-          "Pessoa citada\\tCarlos Demonstração Lima\\tCPF: 987.654.321-00\\t(85) 98888-0000"
-        ].join("\\n")
+          "Papel\tNome fictício\tDocumento de teste\tContato de teste",
+          "Comunicante\tMarina Exemplo da Silva\tCPF: 123.456.789-00\t(85) 90000-1234",
+          "Testemunha\tRafael Modelo de Souza\tRG: TESTE-CE-000123\trafael.teste@example.com",
+          "Pessoa citada\tCarlos Demonstração Lima\tCPF: 987.654.321-00\t(85) 98888-0000"
+        ].join("\n")
       }]
     };
     const names = detectSensitiveEntities(tableDocument).findings
@@ -92,7 +92,7 @@ describe("detectSensitiveEntities", () => {
       id: "plate-test", format: "DOCX",
       sections: [{
         id: "plate-text", type: "TEXT",
-        content: "Número de referência\\tSIM-2026-000184\\nPlaca de teste: ABC1D23\\nA motocicleta, placa ABC1D23."
+        content: "Número de referência\tSIM-2026-000184\nPlaca de teste: ABC1D23\nA motocicleta, placa ABC1D23."
       }]
     };
     const plates = detectSensitiveEntities(plateDocument).findings
