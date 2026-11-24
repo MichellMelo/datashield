@@ -153,6 +153,7 @@ function contextualFindings(sectionId: string, text: string): DetectedEntity[] {
     { type: "OPERATIONAL_DATA", regex: /\b(\d{1,3}\s+minutos?\s+(?:antes|depois))\b/giu, severity: "MEDIUM", confidence: 0.86 },
     { type: "OPERATIONAL_DATA", regex: /\b(mais\s+(?:um|uma|dois|duas|três|quatro|cinco|seis|sete|oito|nove|dez|\d+)\s+(?:roubos?|ocorrências?|eventos?))\b/giu, severity: "MEDIUM", confidence: 0.86 },
     { type: "OPERATIONAL_DATA", regex: /\b((?:sempre\s+)?às\s+(?:(?:segundas?|terças?|quartas?|quintas?|sextas?)-feiras?|sábados?|domingos?)(?:\s+(?:ou|e)\s+(?:(?:segundas?|terças?|quartas?|quintas?|sextas?)-feiras?|sábados?|domingos?))?)\b/giu, severity: "MEDIUM", confidence: 0.86 },
+    { type: "OPERATIONAL_DATA", regex: /\b(?:era|aparentava ser)\s+((?:baixo|alta?|magro|forte|robusto|magr[aá]|careca|barbado|tatuado)(?:,\s*usava\s+(?:boné|capacete|máscara|óculos|mochila|jaqueta|camisa|blusa|casaco)\s+[\p{L}-]+)?)/giu, severity: "MEDIUM", confidence: 0.86 },
     { type: "DATE_TIME", regex: /\b(?:em|no ano de)\s+((?:19|20)\d{2})\b/giu, severity: "HIGH", confidence: 0.88 },
     { type: "DATE_TIME", regex: /\bentre\s+(\d{1,2})(?=\s+e\s+(?:0?[1-9]|[12]\d|3[01])\/(?:0?[1-9]|1[0-2])\/(?:19|20)\d{2})/giu, severity: "HIGH", confidence: 0.86 },
     { type: "OCCURRENCE_ID", regex: /(?:Número de referência|Número da ocorrência|N[º°.]?\s*(?:da )?ocorrência|Protocolo(?: de atendimento)?|Registro(?: da ocorrência)?)\s*:?[ \t\r\n]*([A-Z0-9][A-Z0-9._/-]{3,48}[A-Z0-9])(?![A-Z0-9])/giu, severity: "HIGH", confidence: 0.99 },
