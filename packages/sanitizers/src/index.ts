@@ -142,7 +142,7 @@ function buildPersonIdentityKeys(
 }
 
 function organizationInitials(value: string): string {
-  const words = value.trim().split(/\\s+/u).filter(Boolean);
+  const words = value.trim().split(/\s+/u).filter(Boolean);
   return words.map((word) => [...normalizeKey(word)][0] ?? "").join("");
 }
 
@@ -155,11 +155,11 @@ function buildOrganizationIdentityKeys(
 
   for (const finding of organizations) {
     const value = finding.value.trim();
-    if (/^\\p{Lu}{2,6}$/u.test(value)) {
+    if (/^\p{Lu}{2,6}$/u.test(value)) {
       acronyms.add(normalizeKey(value));
       continue;
     }
-    if (!/\\s/u.test(value)) continue;
+    if (!/\s/u.test(value)) continue;
     const initials = organizationInitials(value);
     const names = fullNames.get(initials) ?? new Set<string>();
     names.add(normalizeKey(value));
