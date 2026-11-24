@@ -4,7 +4,8 @@ export type SanitizationAction = "REDACT" | "PSEUDONYMIZE" | "GENERALIZE" | "KEE
 export type SensitiveEntityType =
   | "PERSON" | "CPF" | "RG" | "CNPJ" | "PHONE" | "EMAIL" | "ADDRESS" | "GPS"
   | "VEHICLE_PLATE" | "VEHICLE_CHASSIS" | "PROCESS_NUMBER" | "ORGANIZATION"
-  | "ALIAS" | "SOURCE" | "OPERATIONAL_DATA";
+  | "ALIAS" | "SOURCE" | "OPERATIONAL_DATA" | "DATE_TIME" | "OCCURRENCE_ID"
+  | "OPERATIONAL_UNIT" | "TEAM" | "OPERATIONAL_LOCATION";
 export type FindingSeverity = "CRITICAL" | "HIGH" | "MEDIUM";
 export interface DocumentSection { id: string; type: "TEXT" | "TABLE"; content: string; page?: number; row?: number; }
 export interface ExtractedDocument { id: string; format: DocumentFormat; sections: DocumentSection[]; }
