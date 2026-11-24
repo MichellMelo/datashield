@@ -37,7 +37,7 @@ function addContextFinding(sectionId: string, match: RegExpExecArray, type: Sens
 function personFindingsFromRoleBlocks(sectionId: string, text: string): DetectedEntity[] {
   const findings: DetectedEntity[] = [];
   const lines: Array<{ value: string; start: number }> = [];
-  const lineBreak = /\\r\\n|\\n|\\r/g;
+  const lineBreak = /\r\n|\n|\r/g;
   let start = 0;
   let match: RegExpExecArray | null;
 
@@ -48,7 +48,7 @@ function personFindingsFromRoleBlocks(sectionId: string, text: string): Detected
   lines.push({ value: text.slice(start), start });
 
   const rolePattern = /^(?:Comunicante|Testemunha|Pessoa citada)$/iu;
-  const namePattern = /^[A-ZÀ-Ý][\\p{L}'-]*(?:[ \\t]+(?:(?:da|de|do|dos|das|e)[ \\t]+)?[A-ZÀ-Ý][\\p{L}'-]*){1,4}$/u;
+  const namePattern = /^[A-ZÀ-Ý][\p{L}'-]*(?:[ \t]+(?:(?:da|de|do|dos|das|e)[ \t]+)?[A-ZÀ-Ý][\p{L}'-]*){1,4}$/u;
 
   for (let index = 0; index < lines.length; index += 1) {
     if (!rolePattern.test(lines[index]!.value.trim())) continue;
