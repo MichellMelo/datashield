@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "description": "Gabarito sintético para datashield_documento_ficticio_teste.docx. Cada item representa uma ocorrência, inclusive nomes repetidos na narrativa.",
+  "entities": [
+    { "type": "ADDRESS", "value": "Rua das Palmeiras, nº 123, Bairro Lago Azul, Fortaleza/CE" },
+    { "type": "ADDRESS", "value": "Avenida dos Testes, nº 45, Bairro Modelo, Fortaleza/CE" },
+    { "type": "GPS", "value": "03°45'00.0\"S, 038°30'00.0\"W" },
+    { "type": "PERSON", "value": "Marina Exemplo da Silva" },
+    { "type": "PERSON", "value": "Rafael Modelo de Souza" },
+    { "type": "PERSON", "value": "Carlos Demonstração Lima" },
+    { "type": "PERSON", "value": "Marina Exemplo da Silva" },
+    { "type": "PERSON", "value": "Rafael Modelo de Souza" },
+    { "type": "CPF", "value": "123.456.789-00" },
+    { "type": "CPF", "value": "987.654.321-00" },
+    { "type": "PHONE", "value": "(85) 90000-1234" },
+    { "type": "PHONE", "value": "(85) 98888-0000" },
+    { "type": "EMAIL", "value": "rafael.teste@example.com" },
+    { "type": "EMAIL", "value": "marina.exemplo@example.com" },
+    { "type": "RG", "value": "TESTE-CE-000123" },
+    { "type": "VEHICLE_PLATE", "value": "ABC1D23" },
+    { "type": "VEHICLE_PLATE", "value": "ABC1D23" },
+    { "type": "VEHICLE_CHASSIS", "value": "9BWZZZ00ZTP000001" },
+    { "type": "PROCESS_NUMBER", "value": "0001234-56.2026.8.06.0001" },
+    { "type": "ALIAS", "value": "Sombra" },
+    { "type": "ORGANIZATION", "value": "Grupo Demonstração" },
+    { "type": "OPERATIONAL_DATA", "value": "OP-TESTE-2026-09" }
+  ]
+}
