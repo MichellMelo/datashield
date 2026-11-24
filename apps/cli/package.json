@@ -1,0 +1,9 @@
+{
+  "name": "@datashield/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "datashield": "./dist/index.js"
+  }
+}
