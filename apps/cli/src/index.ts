@@ -253,9 +253,9 @@ program.command("review")
 function fingerprint(type: SensitiveEntityType, value: string): string {
   const normalized = value
     .normalize("NFKD")
-    .replace(/[\\u0300-\\u036f]/g, "")
+    .replace(/[\u0300-\u036f]/g, "")
     .toLocaleLowerCase("pt-BR")
-    .replace(/[^\\p{L}\\p{N}]/gu, "");
+    .replace(/[^\p{L}\p{N}]/gu, "");
   return `${type}:${normalized}`;
 }
 
@@ -384,9 +384,9 @@ program.command("sanitize")
 
     const content = [
       "[DataShield — cópia transformada para exercício; não certifica anonimização]",
-      ...transformed.sections.map((section, index) => `### Seção ${index + 1}\\n${section.content}`),
+      ...transformed.sections.map((section, index) => `### Seção ${index + 1}\n${section.content}`),
       "",
-    ].join("\\n\\n");
+    ].join("\n\n");
     const report = {
       schemaVersion: 1,
       createdAt: new Date().toISOString(),
@@ -411,7 +411,7 @@ program.command("sanitize")
     await mkdir(dirname(reportPath), { recursive: true });
     await writeFile(outputPath, content, { encoding: "utf8", flag: "wx" });
     try {
-      await writeFile(reportPath, JSON.stringify(report, null, 2) + "\\n", { encoding: "utf8", flag: "wx" });
+      await writeFile(reportPath, JSON.stringify(report, null, 2) + "\n", { encoding: "utf8", flag: "wx" });
     } catch (error) {
       await unlink(outputPath).catch(() => undefined);
       throw error;
