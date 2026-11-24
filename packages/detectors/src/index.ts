@@ -42,7 +42,7 @@ function contextualFindings(sectionId: string, text: string): DetectedEntity[] {
     { type: "ALIAS", regex: /Apelido mencionado\s*:\s*['"“]?([^'"”\n(]{2,60})/gi, severity: "MEDIUM", confidence: 0.9 },
     { type: "ORGANIZATION", regex: /Organização citada\s*:\s*([^\n(]{2,100})/gi, severity: "MEDIUM", confidence: 0.9 },
     { type: "OPERATIONAL_DATA", regex: /Código operacional simulado\s*:\s*([A-Z0-9_-]{4,50})/gi, severity: "HIGH", confidence: 0.99 },
-    { type: "PERSON", regex: /(?:^|\n)(?:Comunicante|Testemunha|Pessoa citada)[ \t]*\r?\n[ \t]*([A-ZÀ-Ý][\p{L}'-]*(?:[ \t]+(?:(?:da|de|do|dos|das|e)[ \t]+)?[A-ZÀ-Ý][\p{L}'-]*){1,4})/g, severity: "HIGH", confidence: 0.88 },
+    { type: "PERSON", regex: /(?:^|\n)(?:Comunicante|Testemunha|Pessoa citada)[ \t]*\r?\n[ \t]*([A-ZÀ-Ý][\p{L}'-]*(?:[ \t]+(?:(?:da|de|do|dos|das|e)[ \t]+)?[A-ZÀ-Ý][\p{L}'-]*){1,4})/gu, severity: "HIGH", confidence: 0.88 },
     { type: "PERSON", regex: /(?:comunicante|testemunha)\s+([A-ZÀ-Ý][\p{L}'-]+(?:\s+[A-ZÀ-Ý][\p{L}'-]+){1,4})\s+(?:relatou|afirmou)/giu, severity: "HIGH", confidence: 0.88 },
   ];
   for (const item of patterns) {
