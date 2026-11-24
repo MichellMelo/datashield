@@ -8,14 +8,15 @@ Local-first document inspection and sensitive-entity detection CLI built with No
 
 - Local extraction for PDF, DOCX and CSV.
 - `inspect` reports format, size, section count and extracted character count.
-- `detect` finds candidates such as CPF, email, phone, RG, address, GPS, vehicle plate/chassis, CNJ process number, person names, alias, organization and operational code.
+- `detect` finds candidates such as CPF, email, phone, RG, address, GPS, vehicle plate/chassis, CNJ process number, person names, alias, organization, operational code, dates/times, occurrence references, operational units, teams and territorial references.
 - Findings include section-local character offsets, confidence, severity and suggested manual review.
 - CPF pattern recognition is separate from checksum validation.
 - `evaluate` measures precision, recall and F1 against a human-authored ground-truth JSON file, including false-positive and false-negative counts.
 - `review` supports interactive local confirmation/rejection/skip and writes a sidecar JSON with decisions and offsets, without candidate values or source text.
 - `sanitize` applies only human-confirmed findings and requires the sidecar to match the exact source SHA-256 and current finding offsets.
 - The first transformation implementation exports rebuilt extracted text to TXT only: redaction, document-local pseudonyms or broad category placeholders.
-- A post-transformation scan blocks export when residual candidates do not exactly match the reviewer's explicit rejections.
+- Export runs both the primary detector and a separate residual scanner for structured identifiers, narrative addresses, dates/times, occurrence references, names and operational context; export is blocked when findings do not exactly match reviewed rejections.
+- The complete transformed text is displayed in the terminal and an explicit human approval is required before the TXT and audit report are written.
 - Output is created separately with exclusive-write protection; an audit report records counts and warnings without storing finding values or source text.
 - Detection values stay hidden in ordinary CLI output unless explicitly requested.
 - Input size is limited to 25 MiB by default.
@@ -87,7 +88,7 @@ By default, export is blocked when the review contains rejected candidates. Only
 npm run dev -- sanitize ./datashield_documento_ficticio_teste.docx --review ./datashield-review.json --mode pseudonymize --allow-reviewed-rejections --output ./output/aula-desidentificada.txt
 ```
 
-The command writes a separate TXT and a `.report.json` audit report. It never overwrites the source or an existing output. It rebuilds only text returned by extraction; it does not recreate PDF/DOCX formatting, preserve the original file structure or inspect content that the extractor did not obtain. The post-scan is a useful safeguard, not proof that all identifying information has been removed.
+The command writes a separate TXT and a `.report.json` audit report only after interactive final approval. It never overwrites the source or an existing output. It rebuilds only text returned by extraction; it does not recreate PDF/DOCX formatting, preserve the original file structure or inspect content that the extractor did not obtain. The independent residual scan is an additional safeguard, not proof that all identifying information has been removed.
 
 ## Understanding evaluation metrics
 
@@ -112,7 +113,7 @@ Matching requires the same entity type and normalized value. The evaluator norma
 
 ## Detection limitations
 
-- Contextual name/address detection is heuristic and can produce false positives and false negatives.
+- Contextual name/address, date/time and operational-context detection is heuristic and can produce false positives and false negatives.
 - Free-text names without reliable context may be missed.
 - RG and operational-code patterns are configurable starting points, not universal Brazilian standards.
 - CNJ recognition currently checks visible format only, not the official check digit.
