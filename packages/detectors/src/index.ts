@@ -22,6 +22,9 @@ const rules: Rule[] = [
   { type: "VEHICLE_CHASSIS", pattern: /\b[A-HJ-NPR-Z0-9]{17}\b/gi, severity: "HIGH", confidence: 0.98 },
   { type: "PROCESS_NUMBER", pattern: /\b\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}\b/g, severity: "HIGH", confidence: 1 },
   { type: "GPS", pattern: /\b\d{1,2}[°º]\s*\d{1,2}'\s*\d{1,2}(?:\.\d+)?["”]?\s*[NS],?\s*\d{1,3}[°º]\s*\d{1,2}'\s*\d{1,2}(?:\.\d+)?["”]?\s*[EW]\b/gi, severity: "HIGH", confidence: 0.96 },
+  { type: "DATE_TIME", pattern: /\b(?:0?[1-9]|[12]\d|3[01])\/(?:0?[1-9]|1[0-2])\/(?:19|20)\d{2}\b/g, severity: "HIGH", confidence: 0.98 },
+  { type: "DATE_TIME", pattern: /\b(?:[01]?\d|2[0-3])h[0-5]\d\b/gi, severity: "HIGH", confidence: 0.98 },
+  { type: "DATE_TIME", pattern: /\b(?:[01]?\d|2[0-3]):[0-5]\d\b/g, severity: "HIGH", confidence: 0.98 },
 ];
 
 function isDataShieldPlaceholder(value: string): boolean {
@@ -95,6 +98,14 @@ function contextualFindings(sectionId: string, text: string): DetectedEntity[] {
     { type: "ALIAS", regex: /Apelido mencionado\s*:\s*['"“]?([^'"”\n(]{2,60})/gi, severity: "MEDIUM", confidence: 0.9 },
     { type: "ORGANIZATION", regex: /Organização citada\s*:\s*([^\n(]{2,100})/gi, severity: "MEDIUM", confidence: 0.9 },
     { type: "OPERATIONAL_DATA", regex: /Código operacional simulado\s*:\s*([A-Z0-9_-]{4,50})/gi, severity: "HIGH", confidence: 0.99 },
+    { type: "OCCURRENCE_ID", regex: /(?:Número de referência|Número da ocorrência|N[º°.]?\s*(?:da )?ocorrência|Protocolo(?: de atendimento)?|Registro(?: da ocorrência)?)\s*:?[ \t\r\n]*([A-Z0-9][A-Z0-9._/-]{5,50})/giu, severity: "HIGH", confidence: 0.99 },
+    { type: "ADDRESS", regex: /\b(?:na|pela|em)\s+((?:Rua|R\.|Avenida|Av\.?|Travessa|Tv\.?|Alameda|Praça|Pça\.?)\s+[A-ZÀ-Ý0-9][^,\n.;]{2,80}(?:,\s*(?:nas proximidades do imóvel de número|no imóvel de número|n[º°.]?)\s*\d{1,6})?)/giu, severity: "CRITICAL", confidence: 0.9 },
+    { type: "ADDRESS", regex: /(?:imóvel|residência|casa|apartamento)\s+de número\s+(\d{1,6})/giu, severity: "HIGH", confidence: 0.84 },
+    { type: "OPERATIONAL_UNIT", regex: /(?:Unidade fictícia|Unidade responsável|Unidade policial)\s*:?\s*([\d]{1,3}ª?\s+(?:Unidade|Batalhão|Companhia|Delegacia|Distrito)\s+[A-ZÀ-Ý][^—–\n.;]{1,50})/giu, severity: "HIGH", confidence: 0.94 },
+    { type: "OPERATIONAL_UNIT", regex: /\b(\d{1,3}ª?\s+(?:Unidade|Batalhão|Companhia|Delegacia|Distrito)\s+[A-ZÀ-Ý][^—–\n.;]{1,50})/giu, severity: "HIGH", confidence: 0.9 },
+    { type: "TEAM", regex: /\b(Equipe\s+[A-ZÀ-Ý][\p{L}0-9_-]{1,30})/giu, severity: "MEDIUM", confidence: 0.9 },
+    { type: "OPERATIONAL_LOCATION", regex: /(?:Ponto de referência|Referência territorial|Área operacional)\s*:\s*([^—–\n;]{2,80})/giu, severity: "HIGH", confidence: 0.9 },
+    { type: "OPERATIONAL_LOCATION", regex: /\b((?:Setor|Quadrante|Área|Região)\s+(?:de\s+)?[A-ZÀ-Ý][^—–\n.;]{1,45})/gu, severity: "HIGH", confidence: 0.86 },
 
     { type: "PERSON", regex: /(?:comunicante|testemunha)[ \t]+([A-ZÀ-Ý][\p{L}'-]+(?:[ \t]+[A-ZÀ-Ý][\p{L}'-]+){1,4})[ \t]+(?:relatou|afirmou)/giu, severity: "HIGH", confidence: 0.88 },
     { type: "PERSON", regex: /\b(?:Nome completo|Nome|Identificado como|Pessoa identificada como)\s*:\s*([A-ZÀ-Ý][\p{L}'-]*(?:\s+(?:(?:da|de|do|dos|das|e)\s+)?[A-ZÀ-Ý][\p{L}'-]*){1,4})(?=[,;\t\r\n.]|$)/giu, severity: "HIGH", confidence: 0.9 },
@@ -131,7 +142,7 @@ export function detectSensitiveEntities(document: ExtractedDocument): DetectionR
     if (!unique.has(key)) unique.set(key, finding);
   }
   const sorted = [...unique.values()].sort((a, b) => a.sectionId.localeCompare(b.sectionId) || a.start - b.start);
-  const types = [...new Set([...rules.map((rule) => rule.type), "RG", "ADDRESS", "ALIAS", "ORGANIZATION", "OPERATIONAL_DATA", "PERSON"] as SensitiveEntityType[])];
+  const types = [...new Set([...rules.map((rule) => rule.type), "RG", "ADDRESS", "ALIAS", "ORGANIZATION", "OPERATIONAL_DATA", "OCCURRENCE_ID", "OPERATIONAL_UNIT", "TEAM", "OPERATIONAL_LOCATION", "PERSON"] as SensitiveEntityType[])];
   const summary: DetectionResult["summary"] = {};
   for (const type of types) {
     const count = sorted.filter((item) => item.type === type).length;
