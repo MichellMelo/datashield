@@ -71,8 +71,8 @@ describe("sanitizeDocument", () => {
 
   it("reuses one person pseudonym for a full name and a linked first-name reference", () => {
     const source = [
-      "A proprietária, **Wesley Matos Cordeiro**, vulgo **\\"Cabeça\\"**.",
-      "Mais tarde, **Wesley (\\"Cabeça\\")** foi visto no local.",
+      "A proprietária, **Wesley Matos Cordeiro**, vulgo **\"Cabeça\"**.",
+      "Mais tarde, **Wesley (\"Cabeça\")** foi visto no local.",
     ].join(" ");
     const input = document(source);
     const detected = detectSensitiveEntities(input);
@@ -86,8 +86,8 @@ describe("sanitizeDocument", () => {
 
   it("does not merge different full names that happen to share an alias", () => {
     const source = [
-      "A proprietária, **Ana Silva**, vulgo **\\"Xis\\"**.",
-      "O balconista, **Bruno Souza**, vulgo **\\"Xis\\"**.",
+      "A proprietária, **Ana Silva**, vulgo **\"Xis\"**.",
+      "O balconista, **Bruno Souza**, vulgo **\"Xis\"**.",
     ].join(" ");
     const input = document(source);
     const transformed = sanitizeDocument(input, detectSensitiveEntities(input).findings, "pseudonymize");
