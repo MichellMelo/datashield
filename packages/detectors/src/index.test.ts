@@ -30,7 +30,7 @@ Apelido mencionado: 'Sombra' (personagem fictício)
 Organização citada: Grupo Demonstração (entidade fictícia)
 Código operacional simulado: OP-TESTE-2026-09
 A comunicante Marina Exemplo da Silva relatou o fato.
-rafael.teste@example.com
+marina.exemplo@example.com
 A testemunha Rafael Modelo de Souza afirmou ter observado.`
   }]
 };
