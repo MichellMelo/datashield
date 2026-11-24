@@ -122,6 +122,21 @@ describe("detectSensitiveEntities", () => {
     }
   });
 
+  it("assigns unique IDs and collapses nested detections for the same address", () => {
+    const source = "A comunicante informou residir na Avenida dos Testes, nº 45, Bairro Modelo, Fortaleza/CE.";
+    const document: ExtractedDocument = {
+      id: "nested-address-test", format: "DOCX",
+      sections: [{ id: "address-text", type: "TEXT", content: source }],
+    };
+    const findings = detectSensitiveEntities(document).findings.filter((item) => item.type === "ADDRESS");
+
+    expect(findings).toHaveLength(1);
+    expect(findings[0]?.value).toBe("Avenida dos Testes, nº 45, Bairro Modelo, Fortaleza/CE");
+    expect(new Set(detectSensitiveEntities(document).findings.map((item) => item.id)).size)
+      .toBe(detectSensitiveEntities(document).findings.length);
+    expect(source.slice(findings[0]!.start, findings[0]!.end)).toBe(findings[0]!.value);
+  });
+
   it("does not interpret a hyphenated reference number as a vehicle plate", () => {
     const plateDocument: ExtractedDocument = {
       id: "plate-test", format: "DOCX",
