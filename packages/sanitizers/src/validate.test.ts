@@ -99,6 +99,7 @@ describe("validateResidualContent", () => {
     expect(operationalValues).toContain("mais seis roubos");
     expect(operationalValues).toContain("sempre às sextas-feiras ou sábados");
     expect(operationalValues).toContain("baixo, usava boné preto");
+    expect(operationalValues).toContain("baixo, usava boné preto");
 
     for (const finding of findings) {
       expect(text.slice(finding.start, finding.end)).toBe(finding.value);
