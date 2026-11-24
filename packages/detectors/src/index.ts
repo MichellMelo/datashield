@@ -18,7 +18,7 @@ const rules: Rule[] = [
   { type: "CPF", pattern: /\b\d{3}\.\d{3}\.\d{3}-\d{2}\b/g, severity: "CRITICAL", confidence: 1, validate: validateCpf },
   { type: "EMAIL", pattern: /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, severity: "CRITICAL", confidence: 1 },
   { type: "PHONE", pattern: /(?:\+55\s?)?(?:\(?\d{2}\)?\s?)9?\d{4}[-.\s]?\d{4}\b/g, severity: "CRITICAL", confidence: 0.96 },
-  { type: "VEHICLE_PLATE", pattern: /\b[A-Z]{3}[- ]?\d[A-Z0-9]\d{2}\b/gi, severity: "HIGH", confidence: 0.94 },
+  { type: "VEHICLE_PLATE", pattern: /(?<![A-Z0-9-])[A-Z]{3}-?\d[A-Z0-9]\d{2}(?![A-Z0-9-])/gi, severity: "HIGH", confidence: 0.94 },
   { type: "VEHICLE_CHASSIS", pattern: /\b[A-HJ-NPR-Z0-9]{17}\b/gi, severity: "HIGH", confidence: 0.98 },
   { type: "PROCESS_NUMBER", pattern: /\b\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}\b/g, severity: "HIGH", confidence: 1 },
   { type: "GPS", pattern: /\b\d{1,2}[°º]\s*\d{1,2}'\s*\d{1,2}(?:\.\d+)?["”]?\s*[NS],?\s*\d{1,3}[°º]\s*\d{1,2}'\s*\d{1,2}(?:\.\d+)?["”]?\s*[EW]\b/gi, severity: "HIGH", confidence: 0.96 },
@@ -42,7 +42,7 @@ function contextualFindings(sectionId: string, text: string): DetectedEntity[] {
     { type: "ALIAS", regex: /Apelido mencionado\s*:\s*['"“]?([^'"”\n(]{2,60})/gi, severity: "MEDIUM", confidence: 0.9 },
     { type: "ORGANIZATION", regex: /Organização citada\s*:\s*([^\n(]{2,100})/gi, severity: "MEDIUM", confidence: 0.9 },
     { type: "OPERATIONAL_DATA", regex: /Código operacional simulado\s*:\s*([A-Z0-9_-]{4,50})/gi, severity: "HIGH", confidence: 0.99 },
-    { type: "PERSON", regex: /(?:^|\n)(?:Comunicante|Testemunha|Pessoa citada)[ \t]*\r?\n[ \t]*([A-ZÀ-Ý][\p{L}'-]*(?:[ \t]+(?:(?:da|de|do|dos|das|e)[ \t]+)?[A-ZÀ-Ý][\p{L}'-]*){1,4})/gu, severity: "HIGH", confidence: 0.88 },
+    { type: "PERSON", regex: /(?:^|\n)(?:Comunicante|Testemunha|Pessoa citada)[ \t]*(?:\r?\n[ \t]*|[ \t]+)([A-ZÀ-Ý][\p{L}'-]*(?:[ \t]+(?:(?:da|de|do|dos|das|e)[ \t]+)?[A-ZÀ-Ý][\p{L}'-]*){1,4})(?=[\t\r\n]|$)/gu, severity: "HIGH", confidence: 0.88 },
     { type: "PERSON", regex: /(?:comunicante|testemunha)\s+([A-ZÀ-Ý][\p{L}'-]+(?:\s+[A-ZÀ-Ý][\p{L}'-]+){1,4})\s+(?:relatou|afirmou)/giu, severity: "HIGH", confidence: 0.88 },
   ];
   for (const item of patterns) {
