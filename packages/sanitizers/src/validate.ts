@@ -27,7 +27,7 @@ const residualRules: ResidualRule[] = [
   { type: "VEHICLE_CHASSIS", pattern: /\b[A-HJ-NPR-Z0-9]{17}\b/gi },
   { type: "PROCESS_NUMBER", pattern: /\b\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}\b/g },
   { type: "DATE_TIME", pattern: /\b(?:0?[1-9]|[12]\d|3[01])\/(?:0?[1-9]|1[0-2])\/(?:19|20)\d{2}\b/g },
-  { type: "DATE_TIME", pattern: /\b(?:[01]?\d|2[0-3])(?:h[0-5]\d?|:[0-5]\d)\b/gi },
+  { type: "DATE_TIME", pattern: /\b(?:[01]?\d|2[0-3])(?:h(?:[0-5]\d)?|:[0-5]\d)\b/gi },
   { type: "OCCURRENCE_ID", pattern: /(?:Número de referência|Número da ocorrência|N[º°.]?\s*(?:da )?ocorrência|Protocolo(?: de atendimento)?|Registro(?: da ocorrência)?)\s*:?[ \t\r\n]*([A-Z0-9][A-Z0-9._/-]{5,50})/giu },
   { type: "OCCURRENCE_ID", pattern: /\b(?:BO|B\.O\.)\s*(?:n[º°.]?\s*)?:?\s*([A-Z0-9][A-Z0-9._/-]{4,50})/giu },
   { type: "ADDRESS", pattern: /(?:Local(?: informado)?|Endereço(?: residencial)?)\s*:?[ \t\r\n]*((?:Rua|R\.|Avenida|Av\.?|Travessa|Tv\.?|Trav\.?|Alameda|Al\.?|Praça|Pça\.?)\s+[^\n.;]{2,120})/giu },
