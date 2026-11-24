@@ -64,6 +64,7 @@ describe("validateResidualContent", () => {
       "O Bonde do Vale também é citado como BDV.",
       "O assunto envolve os bairros Jardim Aurora, Vila Esperança e Centro Velho.",
       "A ocorrência foi registrada no BO nº 2026/118.455.",
+      "Um dos autores era baixo, usava boné preto e foi visto no local.",
       "A testemunha passou pela Av. Central, nº 1.540, às 19h e às 21h.",
       "Relatório de Campo nº 047/2026; 2º Sgt PM.",
       "Motocicleta Honda CG 160 vermelha e veículo VW Gol prata.",
@@ -97,6 +98,7 @@ describe("validateResidualContent", () => {
     expect(operationalValues).toContain("15 minutos antes");
     expect(operationalValues).toContain("mais seis roubos");
     expect(operationalValues).toContain("sempre às sextas-feiras ou sábados");
+    expect(operationalValues).toContain("baixo, usava boné preto");
 
     for (const finding of findings) {
       expect(text.slice(finding.start, finding.end)).toBe(finding.value);
