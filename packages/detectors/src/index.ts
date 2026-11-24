@@ -34,6 +34,53 @@ function addContextFinding(sectionId: string, match: RegExpExecArray, type: Sens
   });
 }
 
+function personFindingsFromRoleBlocks(sectionId: string, text: string): DetectedEntity[] {
+  const findings: DetectedEntity[] = [];
+  const lines: Array<{ value: string; start: number }> = [];
+  const lineBreak = /\\r\\n|\\n|\\r/g;
+  let start = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = lineBreak.exec(text)) !== null) {
+    lines.push({ value: text.slice(start, match.index), start });
+    start = match.index + match[0].length;
+  }
+  lines.push({ value: text.slice(start), start });
+
+  const rolePattern = /^(?:Comunicante|Testemunha|Pessoa citada)$/iu;
+  const namePattern = /^[A-ZÀ-Ý][\\p{L}'-]*(?:[ \\t]+(?:(?:da|de|do|dos|das|e)[ \\t]+)?[A-ZÀ-Ý][\\p{L}'-]*){1,4}$/u;
+
+  for (let index = 0; index < lines.length; index += 1) {
+    if (!rolePattern.test(lines[index]!.value.trim())) continue;
+
+    let candidateIndex = index + 1;
+    while (candidateIndex < lines.length && lines[candidateIndex]!.value.trim() === "") candidateIndex += 1;
+    if (candidateIndex >= lines.length) continue;
+
+    const candidate = lines[candidateIndex]!.value;
+    const value = candidate.trim();
+    if (!namePattern.test(value)) continue;
+
+    const leadingWhitespace = candidate.length - candidate.trimStart().length;
+    const entityStart = lines[candidateIndex]!.start + leadingWhitespace;
+    findings.push({
+      id: `${sectionId}:${entityStart}:PERSON`,
+      type: "PERSON",
+      value,
+      sectionId,
+      start: entityStart,
+      end: entityStart + value.length,
+      confidence: 0.88,
+      severity: "HIGH",
+      suggestedAction: "MANUAL_REVIEW",
+      reviewed: false,
+      reviewStatus: "PENDING",
+    });
+    index = candidateIndex;
+  }
+  return findings;
+}
+
 function contextualFindings(sectionId: string, text: string): DetectedEntity[] {
   const findings: DetectedEntity[] = [];
   const patterns: Array<{ type: SensitiveEntityType; regex: RegExp; severity: FindingSeverity; confidence: number }> = [
@@ -42,13 +89,14 @@ function contextualFindings(sectionId: string, text: string): DetectedEntity[] {
     { type: "ALIAS", regex: /Apelido mencionado\s*:\s*['"“]?([^'"”\n(]{2,60})/gi, severity: "MEDIUM", confidence: 0.9 },
     { type: "ORGANIZATION", regex: /Organização citada\s*:\s*([^\n(]{2,100})/gi, severity: "MEDIUM", confidence: 0.9 },
     { type: "OPERATIONAL_DATA", regex: /Código operacional simulado\s*:\s*([A-Z0-9_-]{4,50})/gi, severity: "HIGH", confidence: 0.99 },
-    { type: "PERSON", regex: /(?:^|\n)(?:Comunicante|Testemunha|Pessoa citada)[ \t]*(?:\r?\n[ \t]*|[ \t]+)([A-ZÀ-Ý][\p{L}'-]*(?:[ \t]+(?:(?:da|de|do|dos|das|e)[ \t]+)?[A-ZÀ-Ý][\p{L}'-]*){1,4})(?=[\t\r\n]|$)/gu, severity: "HIGH", confidence: 0.88 },
+
     { type: "PERSON", regex: /(?:comunicante|testemunha)\s+([A-ZÀ-Ý][\p{L}'-]+(?:\s+[A-ZÀ-Ý][\p{L}'-]+){1,4})\s+(?:relatou|afirmou)/giu, severity: "HIGH", confidence: 0.88 },
   ];
   for (const item of patterns) {
     let match: RegExpExecArray | null;
     while ((match = item.regex.exec(text)) !== null) addContextFinding(sectionId, match, item.type, item.severity, item.confidence, findings);
   }
+  findings.push(...personFindingsFromRoleBlocks(sectionId, text));
   return findings;
 }
 
