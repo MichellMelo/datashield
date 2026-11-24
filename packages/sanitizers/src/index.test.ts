@@ -97,6 +97,36 @@ describe("sanitizeDocument", () => {
     expect(transformed.identityWarnings.length).toBeGreaterThan(0);
   });
 
+  it("uses one pseudonym for an organization name and its matching acronym", () => {
+    const source = [
+      "O gerente do Bonde do Vale foi citado.",
+      "O BDV foi mencionado novamente.",
+    ].join(" ");
+    const input = document(source);
+    const detected = detectSensitiveEntities(input);
+    const transformed = sanitizeDocument(input, detected.findings, "pseudonymize");
+    const tokens = transformed.sections[0]?.content.match(/Organizacao_\\d{3}/gu) ?? [];
+
+    expect(tokens).toHaveLength(2);
+    expect(new Set(tokens).size).toBe(1);
+    expect(transformed.identityWarnings).toHaveLength(0);
+  });
+
+  it("does not merge an acronym when multiple organization names share its initials", () => {
+    const source = [
+      "O Bonde do Vale foi citado.",
+      "O Bonde da Vitória também foi citado.",
+      "O BDV foi mencionado novamente.",
+    ].join(" ");
+    const input = document(source);
+    const detected = detectSensitiveEntities(input);
+    const transformed = sanitizeDocument(input, detected.findings, "pseudonymize");
+    const tokens = transformed.sections[0]?.content.match(/Organizacao_\\d{3}/gu) ?? [];
+
+    expect(new Set(tokens).size).toBe(3);
+    expect(transformed.identityWarnings.length).toBeGreaterThan(0);
+  });
+
   it("generalizes location and contact data to broad labels", () => {
     const source = "Rua das Palmeiras, nº 123; email teste@example.com";
     const result = sanitizeDocument(document(source), [
