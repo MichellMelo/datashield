@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { basename, dirname, resolve } from "node:path";
 import { createInterface } from "node:readline/promises";
@@ -10,6 +10,7 @@ import { z } from "zod";
 import type { DetectedEntity, SensitiveEntityType } from "../../../packages/core/src/index.js";
 import { detectSensitiveEntities } from "../../../packages/detectors/src/index.js";
 import { evaluateDetections } from "../../../packages/detectors/src/evaluate.js";
+import { sanitizeDocument, type SanitizationMode } from "../../../packages/sanitizers/src/index.js";
 import { extractDocument, inspectDocument } from "../../../packages/extractors/src/index.js";
 
 const ENTITY_TYPES = [
@@ -26,6 +27,21 @@ const groundTruthSchema = z.object({
     value: z.string().trim().min(1),
   }).strict()),
 }).strict();
+
+const reviewReportSchema = z.object({
+  schemaVersion: z.literal(1),
+  sourceSha256: z.string().regex(/^[a-f0-9]{64}$/i),
+  findings: z.array(z.object({
+    findingId: z.string().min(1),
+    type: z.enum(ENTITY_TYPES),
+    sectionId: z.string().min(1),
+    start: z.number().int().nonnegative(),
+    end: z.number().int().positive(),
+    confidence: z.number().min(0).max(1),
+    severity: z.enum(["CRITICAL", "HIGH", "MEDIUM"]),
+    status: z.enum(["CONFIRMED", "REJECTED", "PENDING"]),
+  }).strict()),
+}).passthrough();
 
 const program = new Command();
 program.name("datashield").description("Local-first document inspection and sensitive-entity detection CLI").version("0.1.0");
@@ -234,16 +250,187 @@ program.command("review")
     console.log("The report contains no source text or candidate values. No sanitization was performed.");
   });
 
+function fingerprint(type: SensitiveEntityType, value: string): string {
+  const normalized = value
+    .normalize("NFKD")
+    .replace(/[\\u0300-\\u036f]/g, "")
+    .toLocaleLowerCase("pt-BR")
+    .replace(/[^\\p{L}\\p{N}]/gu, "");
+  return `${type}:${normalized}`;
+}
+
+function countFingerprints(items: Array<{ type: SensitiveEntityType; value: string }>): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const item of items) {
+    const key = fingerprint(item.type, item.value);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return counts;
+}
+
+function sameCounts(left: Map<string, number>, right: Map<string, number>): boolean {
+  if (left.size !== right.size) return false;
+  for (const [key, count] of left) if (right.get(key) !== count) return false;
+  return true;
+}
+
 program.command("sanitize")
-  .description("Sanitize a document (not implemented)")
-  .argument("<file>", "Path to a PDF, DOCX or CSV document")
-  .option("--policy <name>", "Sanitization policy", "intermediate")
-  .option("--output <directory>", "Output directory", "./output")
-  .option("--formats <formats>", "Comma-separated output formats", "json,txt")
-  .action((file: string) => {
-    console.error(pc.red("Sanitization is not implemented. No file has been processed."));
-    console.error(pc.dim(`Input: ${file}`));
-    process.exitCode = 2;
+  .description("Create a reviewed, de-identified TXT copy; this does not certify anonymization")
+  .argument("<file>", "Original PDF, DOCX or CSV document")
+  .requiredOption("--review <json>", "Human-review sidecar created by the review command")
+  .option("--mode <mode>", "Transformation: redact, pseudonymize or generalize", "pseudonymize")
+  .option("--output <file>", "New TXT output path", "./output/datashield-deidentified.txt")
+  .option("--report <file>", "Transformation report path (JSON)")
+  .option("--allow-reviewed-rejections", "Allow explicitly rejected candidates to remain, with a warning")
+  .option("--max-bytes <bytes>", "Maximum input file size", "26214400")
+  .action(async (file: string, options: {
+    review: string;
+    mode: string;
+    output: string;
+    report?: string;
+    allowReviewedRejections?: boolean;
+    maxBytes: string;
+  }) => {
+    const modeResult = z.enum(["redact", "pseudonymize", "generalize"]).safeParse(options.mode);
+    if (!modeResult.success) throw new Error("--mode must be redact, pseudonymize or generalize.");
+    const mode: SanitizationMode = modeResult.data;
+
+    const inputPath = resolve(file);
+    const reviewPath = resolve(options.review);
+    const outputPath = resolve(options.output);
+    const reportPath = resolve(options.report ?? `${outputPath}.report.json`);
+
+    if (outputPath === inputPath || reportPath === inputPath || reportPath === outputPath) {
+      throw new Error("Input, TXT output and report must use three different paths.");
+    }
+    if (outputPath === reviewPath || reportPath === reviewPath) {
+      throw new Error("Output paths must not overwrite the review sidecar.");
+    }
+    if (!outputPath.toLowerCase().endsWith(".txt")) {
+      throw new Error("Only .txt export is supported. The source PDF/DOCX/CSV will not be rebuilt.");
+    }
+
+    let reviewJson: unknown;
+    try {
+      reviewJson = JSON.parse(await readFile(reviewPath, "utf8"));
+    } catch {
+      throw new Error("Could not read a valid review JSON file.");
+    }
+    const parsedReview = reviewReportSchema.safeParse(reviewJson);
+    if (!parsedReview.success) {
+      throw new Error("Review sidecar has an invalid schema. Generate it again with the current DataShield version.");
+    }
+
+    const sourceBytesBefore = await readFile(inputPath);
+    const sourceSha256 = createHash("sha256").update(sourceBytesBefore).digest("hex");
+    if (sourceSha256 !== parsedReview.data.sourceSha256) {
+      throw new Error("Review sidecar does not match this exact source file (SHA-256 mismatch). Export blocked.");
+    }
+
+    const document = await extractDocument(inputPath, { maxFileBytes: parseMaxBytes(options.maxBytes) });
+    const sourceSha256After = createHash("sha256").update(await readFile(inputPath)).digest("hex");
+    if (sourceSha256After !== sourceSha256) {
+      throw new Error("Source file changed during processing. Export blocked.");
+    }
+
+    const detected = detectSensitiveEntities(document);
+    if (document.sections.every((section) => section.content.trim().length === 0)) {
+      throw new Error("No text could be extracted. Export blocked; OCR and image-based content are not supported.");
+    }
+
+    const decisions = parsedReview.data.findings;
+    const decisionsById = new Map(decisions.map((decision) => [decision.findingId, decision]));
+    if (decisionsById.size !== decisions.length) {
+      throw new Error("Review sidecar contains duplicate finding IDs. Export blocked.");
+    }
+    if (decisions.length !== detected.findings.length) {
+      throw new Error("Review is incomplete or belongs to a different detection result. Review every candidate again.");
+    }
+
+    for (const finding of detected.findings) {
+      const decision = decisionsById.get(finding.id);
+      if (!decision
+        || decision.type !== finding.type
+        || decision.sectionId !== finding.sectionId
+        || decision.start !== finding.start
+        || decision.end !== finding.end) {
+        throw new Error("Review sidecar does not cover the current findings exactly. Export blocked.");
+      }
+      if (decision.status === "PENDING") {
+        throw new Error("At least one candidate is still pending human review. Export blocked.");
+      }
+    }
+
+    const confirmedIds = new Set(
+      decisions.filter((decision) => decision.status === "CONFIRMED").map((decision) => decision.findingId),
+    );
+    const rejectedFindings = detected.findings.filter((finding) => !confirmedIds.has(finding.id));
+    if (rejectedFindings.length > 0 && !options.allowReviewedRejections) {
+      throw new Error(
+        `${rejectedFindings.length} candidate(s) were rejected in review. Re-run with --allow-reviewed-rejections only after checking each rejection carefully.`,
+      );
+    }
+
+    const confirmedFindings = detected.findings.filter((finding) => confirmedIds.has(finding.id));
+    const transformed = sanitizeDocument(document, confirmedFindings, mode);
+    const postScan = detectSensitiveEntities({ ...document, sections: transformed.sections });
+    const expectedRemainders = countFingerprints(rejectedFindings);
+    const actualRemainders = countFingerprints(postScan.findings);
+    if (!sameCounts(expectedRemainders, actualRemainders)) {
+      throw new Error(
+        `Post-transformation validation found ${postScan.findings.length} candidate(s), which do not match the reviewed exclusions. Export blocked.`,
+      );
+    }
+
+    const content = [
+      "[DataShield — cópia transformada para exercício; não certifica anonimização]",
+      ...transformed.sections.map((section, index) => `### Seção ${index + 1}\\n${section.content}`),
+      "",
+    ].join("\\n\\n");
+    const report = {
+      schemaVersion: 1,
+      createdAt: new Date().toISOString(),
+      sourceSha256,
+      sourceFormat: document.format,
+      outputFile: basename(outputPath),
+      mode,
+      transformedFindings: transformed.transformedCount,
+      transformedByType: transformed.summary,
+      reviewedRejectedCandidates: rejectedFindings.length,
+      postTransformationCandidates: postScan.findings.length,
+      validationStatus: rejectedFindings.length === 0 ? "PASS_NO_RESIDUAL_CANDIDATES" : "PASS_WITH_REVIEWED_REJECTIONS",
+      warnings: [
+        "This is a reviewed text transformation, not a guarantee of anonymization or legal compliance.",
+        "Detection and validation cover extracted text only; OCR, images, metadata, comments, headers, footers and unextracted content may remain outside this output.",
+        "A candidate rejected by the reviewer remains unchanged and may contain identifying information.",
+        "Only extracted text sections were exported to TXT; original formatting and document metadata were not preserved.",
+      ],
+    };
+
+    await mkdir(dirname(outputPath), { recursive: true });
+    await mkdir(dirname(reportPath), { recursive: true });
+    await writeFile(outputPath, content, { encoding: "utf8", flag: "wx" });
+    try {
+      await writeFile(reportPath, JSON.stringify(report, null, 2) + "\\n", { encoding: "utf8", flag: "wx" });
+    } catch (error) {
+      await unlink(outputPath).catch(() => undefined);
+      throw error;
+    }
+
+    console.log(pc.bold("DataShield — reviewed text transformation"));
+    console.log(`Mode: ${mode}`);
+    console.log(`Candidates transformed: ${transformed.transformedCount}`);
+    console.log(`Post-transformation candidates: ${postScan.findings.length}`);
+    console.log(`TXT output: ${outputPath}`);
+    console.log(`Audit report: ${reportPath}`);
+    if (rejectedFindings.length > 0) {
+      console.log(pc.yellow(
+        `Warning: ${rejectedFindings.length} reviewed/rejected candidate(s) remain unchanged. Re-check them before using the TXT.`,
+      ));
+    }
+    console.log(pc.yellow(
+      "This output is not certified anonymous and is not approved for real, classified or law-enforcement data. Use synthetic material in class.",
+    ));
   });
 
 program.parseAsync(process.argv).catch((error: unknown) => {
