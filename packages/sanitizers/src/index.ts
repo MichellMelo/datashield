@@ -83,10 +83,10 @@ function buildPersonIdentityKeys(
       for (const alias of aliases) {
         if (person.end > alias.start) continue;
         const gap = section.content.slice(person.end, alias.start);
-        if (gap.length > 40 || /[.!?\\r\\n]/u.test(gap)) continue;
+        if (gap.length > 40 || /[.!?\r\n]/u.test(gap)) continue;
 
-        const introducedByAlias = /\\b(?:vulgo|alcunha|apelid[oa])\\b/iu.test(gap);
-        const parentheticalAlias = /^\\s*\\(\\s*["“']?\\s*$/u.test(gap);
+        const introducedByAlias = /\b(?:vulgo|alcunha|apelid[oa])\b/iu.test(gap);
+        const parentheticalAlias = /^\s*\(\s*["“']?\s*$/u.test(gap);
         if (!introducedByAlias && !parentheticalAlias) continue;
 
         const distance = alias.start - person.end;
@@ -105,14 +105,14 @@ function buildPersonIdentityKeys(
   const proposedKeys = new Map<string, Set<string>>();
   const warnings: string[] = [];
 
-  for (const [aliasKey, people] of peopleByAlias) {
+  for (const people of peopleByAlias.values()) {
     const variants = [...people.entries()];
     if (variants.length < 2) continue;
 
-    const fullNames = variants.filter(([, value]) => value.trim().split(/\\s+/u).length > 1);
+    const fullNames = variants.filter(([, value]) => value.trim().split(/\s+/u).length > 1);
     const canonical = fullNames.length === 1 ? fullNames[0] : undefined;
     const firstNameKey = canonical
-      ? normalizeKey(canonical[1].trim().split(/\\s+/u)[0] ?? "")
+      ? normalizeKey(canonical[1].trim().split(/\s+/u)[0] ?? "")
       : "";
     const safeAbbreviationGroup = Boolean(canonical)
       && variants.every(([nameKey]) => nameKey === canonical![0] || nameKey === firstNameKey);
