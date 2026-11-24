@@ -90,7 +90,7 @@ function contextualFindings(sectionId: string, text: string): DetectedEntity[] {
     { type: "ORGANIZATION", regex: /Organização citada\s*:\s*([^\n(]{2,100})/gi, severity: "MEDIUM", confidence: 0.9 },
     { type: "OPERATIONAL_DATA", regex: /Código operacional simulado\s*:\s*([A-Z0-9_-]{4,50})/gi, severity: "HIGH", confidence: 0.99 },
 
-    { type: "PERSON", regex: /(?:comunicante|testemunha)\s+([A-ZÀ-Ý][\p{L}'-]+(?:\s+[A-ZÀ-Ý][\p{L}'-]+){1,4})\s+(?:relatou|afirmou)/giu, severity: "HIGH", confidence: 0.88 },
+    { type: "PERSON", regex: /(?:comunicante|testemunha)[ \t]+([A-ZÀ-Ý][\p{L}'-]+(?:[ \t]+[A-ZÀ-Ý][\p{L}'-]+){1,4})[ \t]+(?:relatou|afirmou)/giu, severity: "HIGH", confidence: 0.88 },
     { type: "PERSON", regex: /\b(?:Nome completo|Nome|Identificado como|Pessoa identificada como)\s*:\s*([A-ZÀ-Ý][\p{L}'-]*(?:\s+(?:(?:da|de|do|dos|das|e)\s+)?[A-ZÀ-Ý][\p{L}'-]*){1,4})(?=[,;\t\r\n.]|$)/giu, severity: "HIGH", confidence: 0.9 },
   ];
   for (const item of patterns) {
