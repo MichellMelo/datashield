@@ -44,7 +44,7 @@ describe("field report DOCX regression", () => {
   it("detects the 83 expected occurrences, including quasi-identifiers", () => {
     const result = detectSensitiveEntities(document);
 
-    expect(result.findings).toHaveLength(83);
+    expect(result.findings).toHaveLength(84);
     expect(result.findings.find((finding) => finding.type === "OCCURRENCE_ID")?.value)
       .toBe("2026/118.455");
     const operationalValues = result.findings
@@ -59,6 +59,7 @@ describe("field report DOCX regression", () => {
     expect(operationalValues).toContain("15 minutos antes");
     expect(operationalValues).toContain("mais seis roubos");
     expect(operationalValues).toContain("sempre às sextas-feiras ou sábados");
+    expect(operationalValues).toContain("baixo, usava boné preto");
     const dateValues = result.findings
       .filter((finding) => finding.type === "DATE_TIME")
       .map((finding) => finding.value);
@@ -70,7 +71,7 @@ describe("field report DOCX regression", () => {
       CPF: 3,
       DATE_TIME: 16,
       OCCURRENCE_ID: 1,
-      OPERATIONAL_DATA: 9,
+      OPERATIONAL_DATA: 10,
       OPERATIONAL_LOCATION: 8,
       OPERATIONAL_UNIT: 1,
       ORGANIZATION: 6,
