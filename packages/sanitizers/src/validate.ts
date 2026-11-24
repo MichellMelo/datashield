@@ -84,7 +84,7 @@ function collectTerritorialResiduals(sectionId: string, text: string): ResidualC
   for (const name of names) {
     let offset = 0;
     while ((offset = text.indexOf(name, offset)) !== -1) {
-      const before = offset > 0 ? text[offset - 1] : "";
+      const before = offset > 0 ? (text[offset - 1] ?? "") : "";
       const after = text[offset + name.length] ?? "";
       const word = (character: string) => character !== "" && /[\p{L}\p{N}_]/u.test(character);
       if (!word(before) && !word(after)) {
