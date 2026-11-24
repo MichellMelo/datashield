@@ -54,4 +54,56 @@ describe("validateResidualContent", () => {
       expect(text.slice(finding.start, finding.end)).toBe(finding.value);
     }
   });
+
+  it("detects report-specific residual patterns independently", () => {
+    const text = [
+      "A proprietária, **Maria do Socorro Lima Freitas**, informou os dados.",
+      "Ela é mãe de **Diego Rocha Silva**, vulgo **\"Baixinho\"**.",
+      "O balconista **Antônio Carlos Bezerra**, RG 2009.1188.334, relatou o fato.",
+      "A **Mercearia Dois Irmãos** foi mencionada junto ao **Bonde do Vale**.",
+      "O Bonde do Vale também é citado como BDV.",
+      "O assunto envolve os bairros Jardim Aurora, Vila Esperança e Centro Velho.",
+      "A ocorrência foi registrada no BO nº 2026/118.455.",
+      "Um dos autores era baixo, usava boné preto e foi visto no local.",
+      "A testemunha passou pela Av. Central, nº 1.540, às 19h e às 21h.",
+      "Relatório de Campo nº 047/2026; 2º Sgt PM.",
+      "Motocicleta Honda CG 160 vermelha e veículo VW Gol prata.",
+      "Valor R$ 1.200,00; estacionada a 50 metros do local, 15 minutos antes.",
+      "Entre 17 e 27/10/2026, em 2023, foram mais seis roubos, sempre às sextas-feiras ou sábados."
+    ].join("\n");
+
+    const findings = validateResidualContent([{ id: "report", content: text }]);
+    const byType = (type: string) => findings.filter((finding) => finding.type === type);
+
+    expect(byType("PERSON").map((finding) => finding.value)).toContain("Maria do Socorro Lima Freitas");
+    expect(byType("PERSON").map((finding) => finding.value)).toContain("Diego Rocha Silva");
+    expect(byType("RG").map((finding) => finding.value)).toContain("2009.1188.334");
+    expect(byType("ALIAS").map((finding) => finding.value)).toContain("Baixinho");
+    expect(byType("ORGANIZATION").map((finding) => finding.value)).toContain("Mercearia Dois Irmãos");
+    expect(byType("ORGANIZATION").map((finding) => finding.value)).toContain("Bonde do Vale");
+    expect(byType("ORGANIZATION").map((finding) => finding.value)).toContain("BDV");
+    expect(byType("OPERATIONAL_LOCATION").map((finding) => finding.value)).toContain("Jardim Aurora");
+    expect(byType("OCCURRENCE_ID").map((finding) => finding.value)).toContain("2026/118.455");
+    expect(byType("ADDRESS").map((finding) => finding.value)).toContain("1.540");
+    expect(byType("DATE_TIME").map((finding) => finding.value)).toContain("19h");
+    expect(byType("DATE_TIME").map((finding) => finding.value)).toContain("17");
+    expect(byType("DATE_TIME").map((finding) => finding.value)).toContain("2023");
+    const operationalValues = byType("OPERATIONAL_DATA").map((finding) => finding.value);
+    expect(operationalValues).toContain("047/2026");
+    expect(operationalValues).toContain("2º Sgt PM");
+    expect(operationalValues).toContain("Honda CG 160 vermelha");
+    expect(operationalValues).toContain("VW Gol prata");
+    expect(operationalValues).toContain("R$ 1.200,00");
+    expect(operationalValues).toContain("50 metros");
+    expect(operationalValues).toContain("15 minutos antes");
+    expect(operationalValues).toContain("mais seis roubos");
+    expect(operationalValues).toContain("sempre às sextas-feiras ou sábados");
+    expect(operationalValues).toContain("baixo, usava boné preto");
+    expect(operationalValues).toContain("baixo, usava boné preto");
+
+    for (const finding of findings) {
+      expect(text.slice(finding.start, finding.end)).toBe(finding.value);
+    }
+  });
+
 });

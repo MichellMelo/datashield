@@ -27,19 +27,41 @@ const residualRules: ResidualRule[] = [
   { type: "VEHICLE_CHASSIS", pattern: /\b[A-HJ-NPR-Z0-9]{17}\b/gi },
   { type: "PROCESS_NUMBER", pattern: /\b\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}\b/g },
   { type: "DATE_TIME", pattern: /\b(?:0?[1-9]|[12]\d|3[01])\/(?:0?[1-9]|1[0-2])\/(?:19|20)\d{2}\b/g },
-  { type: "DATE_TIME", pattern: /\b(?:[01]?\d|2[0-3])(?:h[0-5]\d|:[0-5]\d)\b/gi },
-  { type: "OCCURRENCE_ID", pattern: /(?:Número de referência|Número da ocorrência|N[º°.]?\s*(?:da )?ocorrência|Protocolo(?: de atendimento)?|Registro(?: da ocorrência)?)\s*:?[ \t\r\n]*([A-Z0-9][A-Z0-9._/-]{5,50})/giu },
+  { type: "DATE_TIME", pattern: /\b(?:[01]?\d|2[0-3])(?:h(?:[0-5]\d)?|:[0-5]\d)\b/gi },
+  // Independent checks for contextual quasi-identifiers.
+  { type: "OPERATIONAL_DATA", pattern: /\bRelatório(?:\s+de\s+Campo)?\s+n[º°.]?\s*(\d{1,6}\/\d{4})/giu },
+  { type: "OPERATIONAL_DATA", pattern: /\b(\d{1,3}º?\s+(?:Sgt|Sargento|Cb|Cabo|Sd|Soldado|Ten|Tenente|Cap|Capitão|Maj|Major|Cel|Coronel)\s+PM)\b/giu },
+  { type: "OPERATIONAL_DATA", pattern: /\b((?:(?:Honda|Yamaha|Suzuki|Kawasaki)\s+[A-Z]{1,3}\s*\d{2,4}|(?:VW|Volkswagen|Fiat|Chevrolet|GM|Ford|Hyundai|Toyota|Renault|Nissan|Jeep)\s+[A-Z][\p{L}\d-]{1,20})(?:\s+(?:preto|preta|branco|branca|prata|cinza|vermelho|vermelha|azul|verde|amarelo|amarela))?)\b/giu },
+  { type: "OPERATIONAL_DATA", pattern: /(R\$\s?[\d.]+,\d{2})/giu },
+  { type: "OPERATIONAL_DATA", pattern: /\b(?:a|cerca de|aproximadamente)\s+(\d{1,4}\s+metros?)\b/giu },
+  { type: "OPERATIONAL_DATA", pattern: /\b(\d{1,3}\s+minutos?\s+(?:antes|depois))\b/giu },
+  { type: "OPERATIONAL_DATA", pattern: /\b(mais\s+(?:um|uma|dois|duas|três|quatro|cinco|seis|sete|oito|nove|dez|\d+)\s+(?:roubos?|ocorrências?|eventos?))\b/giu },
+  { type: "OPERATIONAL_DATA", pattern: /\b((?:sempre\s+)?às\s+(?:(?:segundas?|terças?|quartas?|quintas?|sextas?)-feiras?|sábados?|domingos?)(?:\s+(?:ou|e)\s+(?:(?:segundas?|terças?|quartas?|quintas?|sextas?)-feiras?|sábados?|domingos?))?)\b/giu },
+  { type: "OPERATIONAL_DATA", pattern: /\b(?:era|aparentava ser)\s+((?:baixo|alta?|magro|forte|robusto|magr[aá]|careca|barbado|tatuado)(?:,\s*usava\s+(?:boné|capacete|máscara|óculos|mochila|jaqueta|camisa|blusa|casaco)\s+[\p{L}-]+)?)/giu },
+  { type: "DATE_TIME", pattern: /\b(?:em|no ano de)\s+((?:19|20)\d{2})\b/giu },
+  { type: "DATE_TIME", pattern: /\bentre\s+(\d{1,2})(?=\s+e\s+(?:0?[1-9]|[12]\d|3[01])\/(?:0?[1-9]|1[0-2])\/(?:19|20)\d{2})/giu },
+  { type: "OCCURRENCE_ID", pattern: /(?:Número de referência|Número da ocorrência|N[º°.]?\s*(?:da )?ocorrência|Protocolo(?: de atendimento)?|Registro(?: da ocorrência)?)\s*:?[ \t\r\n]*([A-Z0-9][A-Z0-9._/-]{3,48}[A-Z0-9])(?![A-Z0-9])/giu },
+  { type: "OCCURRENCE_ID", pattern: /\b(?:BO|B\.O\.)\s*(?:n[º°.]?\s*)?:?\s*([A-Z0-9][A-Z0-9._/-]{3,48}[A-Z0-9])(?![A-Z0-9])/giu },
   { type: "ADDRESS", pattern: /(?:Local(?: informado)?|Endereço(?: residencial)?)\s*:?[ \t\r\n]*((?:Rua|R\.|Avenida|Av\.?|Travessa|Tv\.?|Trav\.?|Alameda|Al\.?|Praça|Pça\.?)\s+[^\n.;]{2,120})/giu },
-  { type: "ADDRESS", pattern: /\b(?:na|pela|em)\s+((?:Rua|R\.|Avenida|Av\.?|Travessa|Tv\.?|Alameda|Praça|Pça\.?)\s+[A-ZÀ-Ý0-9][^,\n.;]{2,80})/giu },
+  { type: "ADDRESS", pattern: /\b(?:na|pela|em)\s+((?:Rua|R\.|Avenida|Av\.?|Travessa|Tv\.?|Trav\.?|Alameda|Al\.?|Praça|Pça\.?)\s+(?:(?:do|da|de|dos|das)\s+)?[\p{L}\d]+(?:[ \t]+(?!com\b|na\b|no\b|nas\b|nos\b|quando\b|foi\b|em\b|sobre\b|para\b)[\p{L}\d]+){0,2})/giu },
+  { type: "ADDRESS", pattern: /(?:Rua|R\.|Avenida|Av\.?|Travessa|Tv\.?|Trav\.?|Alameda|Al\.?|Praça|Pça\.?)\s+(?:(?:do|da|de|dos|das)\s+)?[\p{L}\d]+(?:[ \t]+[\p{L}\d]+){0,2}[ \t]*,[ \t]*n[º°o.]?[ \t]*(\d{1,6}(?:\.\d{3})?)(?![\d])/giu },
   { type: "ADDRESS", pattern: /(?:imóvel|residência|casa|apartamento)\s+de número\s+(\d{1,6})/giu },
   { type: "PERSON", pattern: /(?:comunicante|testemunha)\s+([A-ZÀ-Ý][\p{L}'-]+(?:[ \t]+(?:(?:da|de|do|dos|das|e)[ \t]+)?[A-ZÀ-Ý][\p{L}'-]+){1,4})[ \t]+(?:relatou|afirmou)/giu },
   { type: "PERSON", pattern: /^(?:Comunicante|Testemunha|Pessoa citada)\s*[\r\n]+\s*([A-ZÀ-Ý][\p{L}'-]+(?:[ \t]+(?:(?:da|de|do|dos|das|e)[ \t]+)?[A-ZÀ-Ý][\p{L}'-]+){1,4})$/gimu },
-  { type: "RG", pattern: /\bRG\s*:\s*([A-Z0-9.-]{5,24})/gi },
+  { type: "PERSON", pattern: /(?:proprietária|balconista|em nome de|mãe de|anda com|conversando com)\s*,?\s*\*\*([A-ZÀ-Ý][\p{L}'-]*(?:\s+(?:(?:da|de|do|dos|das|e)\s+)?[A-ZÀ-Ý][\p{L}'-]*){1,5})\*\*/giu },
+  { type: "PERSON", pattern: /\*\*([A-ZÀ-Ý][\p{L}'-]*(?:\s+(?:(?:da|de|do|dos|das|e)\s+)?[A-ZÀ-Ý][\p{L}'-]*){0,4})\s*\(["“][^"”]+["”]\)\*\*/gu },
+  { type: "PERSON", pattern: /\bAnalista\s+([A-Z]\.\s*[A-ZÀ-Ý][\p{L}'-]*)/giu },
+  { type: "RG", pattern: /\bRG\s*[:º°]?\s*([A-Z0-9.-]{5,24})/gi },
   { type: "ALIAS", pattern: /Apelido mencionado\s*:\s*['"“]?([^'"”\n(]{2,60})/giu },
+  { type: "ALIAS", pattern: /["“]([A-ZÀ-Ý][\p{L}'-]*(?:[ \t]+[A-ZÀ-Ý][\p{L}'-]*){0,2})["”]/gu },
   { type: "ORGANIZATION", pattern: /Organização citada\s*:\s*([^\n(]{2,100})/giu },
+  { type: "ORGANIZATION", pattern: /\*\*((?:Mercearia|Farmácia|Mercadinho|Supermercado|Restaurante|Loja|Empresa|Associação|Bar|Hospital|Escola|Igreja)\s+[^*]{2,80})\*\*/giu },
+  { type: "ORGANIZATION", pattern: /\b((?:Bonde|Grupo|Facção|Organização)\s+(?:(?:do|da|de|dos|das)\s+)?[\p{Lu}][\p{L}'-]+(?:\s+[\p{Lu}][\p{L}'-]+){0,2})\b/gu },
+  { type: "ORGANIZATION", pattern: /\b(BDV)\b/g },
   { type: "OPERATIONAL_DATA", pattern: /Código operacional simulado\s*:\s*([A-Z0-9_-]{4,50})/giu },
   { type: "OPERATIONAL_UNIT", pattern: /(?:Unidade fictícia|Unidade responsável|Unidade policial)\s*:?\s*([\d]{1,3}ª?\s+(?:Unidade|Batalhão|Companhia|Delegacia|Distrito)\s+[A-ZÀ-Ý][^—–\n.;]{1,50})/giu },
   { type: "OPERATIONAL_UNIT", pattern: /\b(\d{1,3}ª?\s+(?:Unidade|Batalhão|Companhia|Delegacia|Distrito)\s+[A-ZÀ-Ý][^—–\n.;]{1,50})/giu },
+  { type: "OPERATIONAL_UNIT", pattern: /\b((?:Seção|Subseção|Núcleo|Departamento|Divisão)\s+de\s+[A-ZÀ-Ý][\p{L}-]+(?:\s+[A-ZÀ-Ý][\p{L}-]+){0,2})/gu },
   { type: "TEAM", pattern: /\b(Equipe\s+[A-ZÀ-Ý][\p{L}0-9_-]{1,30})/giu },
   { type: "OPERATIONAL_LOCATION", pattern: /(?:Ponto de referência|Referência territorial|Área operacional)\s*:\s*([^—–\n;]{2,80})/giu },
   { type: "OPERATIONAL_LOCATION", pattern: /\b((?:Setor|Quadrante|Área|Região)\s+(?:de\s+)?[A-ZÀ-Ý][^—–\n.;]{1,45})/gu },
@@ -54,6 +76,42 @@ function readCapture(match: RegExpExecArray): { value: string; start: number } |
   const relativeOffset = match[0].lastIndexOf(value);
   if (relativeOffset < 0) return null;
   return { value, start: match.index + relativeOffset };
+}
+
+function collectTerritorialResiduals(sectionId: string, text: string): ResidualCandidate[] {
+  const result: ResidualCandidate[] = [];
+  const names = new Set<string>();
+  const list = /\bbairros?\s+([A-ZÀ-Ý][^.;\n]+)/giu;
+  let group: RegExpExecArray | null;
+
+  while ((group = list.exec(text)) !== null) {
+    for (const part of (group[1] ?? "").split(/,|\s+e\s+/u)) {
+      const candidate = part.trim();
+      if (/^[A-ZÀ-Ý][\p{L}'-]+(?:\s+(?:(?:da|de|do|dos|das)\s+)?[A-ZÀ-Ý][\p{L}'-]+){1,3}$/u.test(candidate)) {
+        names.add(candidate);
+      }
+    }
+  }
+
+  for (const name of names) {
+    let offset = 0;
+    while ((offset = text.indexOf(name, offset)) !== -1) {
+      const before = offset > 0 ? (text[offset - 1] ?? "") : "";
+      const after = text[offset + name.length] ?? "";
+      const word = (character: string) => character !== "" && /[\p{L}\p{N}_]/u.test(character);
+      if (!word(before) && !word(after)) {
+        result.push({
+          type: "OPERATIONAL_LOCATION",
+          sectionId,
+          start: offset,
+          end: offset + name.length,
+          value: name,
+        });
+      }
+      offset += name.length;
+    }
+  }
+  return result;
 }
 
 export function validateResidualContent(
@@ -81,6 +139,15 @@ export function validateResidualContent(
           end: captured.start + captured.value.length,
           value: captured.value,
         };
+        const key = candidate.sectionId + ":" + candidate.start + ":" + candidate.end + ":" + candidate.type;
+        if (!found.has(key)) found.set(key, candidate);
+      }
+    }
+  }
+
+  for (const section of sections) {
+    for (const candidate of collectTerritorialResiduals(section.id, section.content)) {
+      if (!generatedMarker.test(candidate.value) && !generatedPseudonym.test(candidate.value)) {
         const key = candidate.sectionId + ":" + candidate.start + ":" + candidate.end + ":" + candidate.type;
         if (!found.has(key)) found.set(key, candidate);
       }

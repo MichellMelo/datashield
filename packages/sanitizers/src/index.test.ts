@@ -69,6 +69,64 @@ describe("sanitizeDocument", () => {
     expect(result.sections[0]?.content).not.toContain("Marina Exemplo");
   });
 
+  it("reuses one person pseudonym for a full name and a linked first-name reference", () => {
+    const source = [
+      "A proprietária, **Wesley Matos Cordeiro**, vulgo **\"Cabeça\"**.",
+      "Mais tarde, **Wesley (\"Cabeça\")** foi visto no local.",
+    ].join(" ");
+    const input = document(source);
+    const detected = detectSensitiveEntities(input);
+    const transformed = sanitizeDocument(input, detected.findings, "pseudonymize");
+    const personTokens = transformed.sections[0]?.content.match(/Pessoa_\d{3}/gu) ?? [];
+
+    expect(personTokens).toHaveLength(2);
+    expect(new Set(personTokens).size).toBe(1);
+    expect(transformed.identityWarnings).toHaveLength(0);
+  });
+
+  it("does not merge different full names that happen to share an alias", () => {
+    const source = [
+      "A proprietária, **Ana Silva**, vulgo **\"Xis\"**.",
+      "O balconista, **Bruno Souza**, vulgo **\"Xis\"**.",
+    ].join(" ");
+    const input = document(source);
+    const transformed = sanitizeDocument(input, detectSensitiveEntities(input).findings, "pseudonymize");
+    const personTokens = transformed.sections[0]?.content.match(/Pessoa_\d{3}/gu) ?? [];
+
+    expect(new Set(personTokens).size).toBe(2);
+    expect(transformed.identityWarnings.length).toBeGreaterThan(0);
+  });
+
+  it("uses one pseudonym for an organization name and its matching acronym", () => {
+    const source = [
+      "O gerente do Bonde do Vale foi citado.",
+      "O BDV foi mencionado novamente.",
+    ].join(" ");
+    const input = document(source);
+    const detected = detectSensitiveEntities(input);
+    const transformed = sanitizeDocument(input, detected.findings, "pseudonymize");
+    const tokens = transformed.sections[0]?.content.match(/Organizacao_\d{3}/gu) ?? [];
+
+    expect(tokens).toHaveLength(2);
+    expect(new Set(tokens).size).toBe(1);
+    expect(transformed.identityWarnings).toHaveLength(0);
+  });
+
+  it("does not merge an acronym when multiple organization names share its initials", () => {
+    const source = [
+      "O Bonde do Vale foi citado.",
+      "O Bonde da Vitória também foi citado.",
+      "O BDV foi mencionado novamente.",
+    ].join(" ");
+    const input = document(source);
+    const detected = detectSensitiveEntities(input);
+    const transformed = sanitizeDocument(input, detected.findings, "pseudonymize");
+    const tokens = transformed.sections[0]?.content.match(/Organizacao_\d{3}/gu) ?? [];
+
+    expect(new Set(tokens).size).toBe(3);
+    expect(transformed.identityWarnings.length).toBeGreaterThan(0);
+  });
+
   it("generalizes location and contact data to broad labels", () => {
     const source = "Rua das Palmeiras, nº 123; email teste@example.com";
     const result = sanitizeDocument(document(source), [
@@ -143,6 +201,31 @@ describe("sanitizeDocument", () => {
     expect(transformed.sections[0]?.content).not.toContain("18/11/2026");
     expect(transformed.sections[0]?.content).not.toContain("SIM-2026-000184");
     expect(input.sections[0]?.content).toBe(source);
+  });
+
+  it("pseudonymizes contextual quasi-identifiers and clears both residual scans", () => {
+    const source = [
+      "Relatório de Campo nº 047/2026 — 2º Sgt PM",
+      "Honda CG 160 vermelha; VW Gol prata; R$ 1.200,00",
+      "a 50 metros do local, 15 minutos antes",
+      "mais seis roubos, sempre às sextas-feiras ou sábados",
+      "Entre 17 e 27/10/2026, com passagem em 2023",
+    ].join(". ");
+    const input = document(source);
+    const detected = detectSensitiveEntities(input);
+    const transformed = sanitizeDocument(input, detected.findings, "pseudonymize");
+
+    expect(transformed.sections[0]?.content).not.toContain("047/2026");
+    expect(transformed.sections[0]?.content).not.toContain("Honda CG 160 vermelha");
+    expect(transformed.sections[0]?.content).not.toContain("VW Gol prata");
+    expect(transformed.sections[0]?.content).not.toContain("R$ 1.200,00");
+    expect(transformed.sections[0]?.content).not.toContain("50 metros");
+    expect(transformed.sections[0]?.content).not.toContain("15 minutos antes");
+    expect(transformed.sections[0]?.content).not.toContain("mais seis roubos");
+    expect(transformed.sections[0]?.content).not.toContain("sexta-feira");
+    expect(transformed.sections[0]?.content).not.toContain("2023");
+    expect(detectSensitiveEntities({ ...input, sections: transformed.sections }).findings).toHaveLength(0);
+    expect(validateResidualContent(transformed.sections)).toHaveLength(0);
   });
 
   it("rejects findings tied to an unknown section", () => {

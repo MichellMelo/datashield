@@ -445,6 +445,7 @@ program.command("sanitize")
       finalHumanReview: "APPROVED_BY_OPERATOR_BEFORE_WRITE",
       validationStatus: rejectedFindings.length === 0 ? "PASS_NO_RESIDUAL_CANDIDATES" : "PASS_WITH_REVIEWED_REJECTIONS",
       warnings: [
+        ...transformed.identityWarnings,
         "Esta é uma transformação de texto revisada, não uma garantia de anonimização ou conformidade legal.",
         "A detecção e a validação abrangem somente o texto extraído; OCR, imagens, metadados, comentários, cabeçalhos, rodapés e conteúdo não extraído podem não estar contemplados nesta saída.",
         "Um candidato rejeitado pelo revisor permanece inalterado e pode conter informações que identifiquem alguém.",
@@ -454,6 +455,10 @@ program.command("sanitize")
 
     if (!stdin.isTTY || !stdout.isTTY) {
       throw new Error("A aprovação final exige um terminal interativo. Nenhum arquivo foi exportado.");
+    }
+    if (transformed.identityWarnings.length > 0) {
+      console.log(pc.yellow("\nAvisos de consistência de identidade:"));
+      for (const warning of transformed.identityWarnings) console.log(pc.yellow("  - " + warning));
     }
     console.log(pc.bold("\n=== REVISÃO FINAL DO TEXTO TRANSFORMADO ==="));
     console.log(pc.yellow("Leia o conteúdo abaixo. Verifique endereços, datas, horários, nomes, referências territoriais e detalhes raros que possam identificar pessoas."));

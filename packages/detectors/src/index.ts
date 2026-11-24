@@ -23,7 +23,7 @@ const rules: Rule[] = [
   { type: "PROCESS_NUMBER", pattern: /\b\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}\b/g, severity: "HIGH", confidence: 1 },
   { type: "GPS", pattern: /\b\d{1,2}[°º]\s*\d{1,2}'\s*\d{1,2}(?:\.\d+)?["”]?\s*[NS],?\s*\d{1,3}[°º]\s*\d{1,2}'\s*\d{1,2}(?:\.\d+)?["”]?\s*[EW]\b/gi, severity: "HIGH", confidence: 0.96 },
   { type: "DATE_TIME", pattern: /\b(?:0?[1-9]|[12]\d|3[01])\/(?:0?[1-9]|1[0-2])\/(?:19|20)\d{2}\b/g, severity: "HIGH", confidence: 0.98 },
-  { type: "DATE_TIME", pattern: /\b(?:[01]?\d|2[0-3])h[0-5]\d\b/gi, severity: "HIGH", confidence: 0.98 },
+  { type: "DATE_TIME", pattern: /\b(?:[01]?\d|2[0-3])h(?:[0-5]\d)?\b/gi, severity: "HIGH", confidence: 0.98 },
   { type: "DATE_TIME", pattern: /\b(?:[01]?\d|2[0-3]):[0-5]\d\b/g, severity: "HIGH", confidence: 0.98 },
 ];
 
@@ -90,31 +90,96 @@ function personFindingsFromRoleBlocks(sectionId: string, text: string): Detected
   return findings;
 }
 
+function territorialReferenceFindings(sectionId: string, text: string): DetectedEntity[] {
+  const findings: DetectedEntity[] = [];
+  const names = new Set<string>();
+  const listPattern = /\bbairros?\s+([A-ZÀ-Ý][^.;\n]+)/giu;
+  let listMatch: RegExpExecArray | null;
+
+  while ((listMatch = listPattern.exec(text)) !== null) {
+    for (const part of (listMatch[1] ?? "").split(/,|\s+e\s+/u)) {
+      const candidate = part.trim();
+      if (/^[A-ZÀ-Ý][\p{L}'-]+(?:\s+(?:(?:da|de|do|dos|das)\s+)?[A-ZÀ-Ý][\p{L}'-]+){1,3}$/u.test(candidate)) {
+        names.add(candidate);
+      }
+    }
+  }
+
+  for (const name of names) {
+    let offset = 0;
+    while ((offset = text.indexOf(name, offset)) !== -1) {
+      const before = offset > 0 ? (text[offset - 1] ?? "") : "";
+      const after = text[offset + name.length] ?? "";
+      const isWordChar = (character: string) => character !== "" && /[\p{L}\p{N}_]/u.test(character);
+      if (!isWordChar(before) && !isWordChar(after)) {
+        findings.push({
+          id: sectionId + ":" + offset + ":" + (offset + name.length) + ":OPERATIONAL_LOCATION",
+          type: "OPERATIONAL_LOCATION",
+          value: name,
+          sectionId,
+          start: offset,
+          end: offset + name.length,
+          confidence: 0.86,
+          severity: "HIGH",
+          suggestedAction: "MANUAL_REVIEW",
+          reviewed: false,
+          reviewStatus: "PENDING",
+        });
+      }
+      offset += name.length;
+    }
+  }
+  return findings;
+}
+
 function contextualFindings(sectionId: string, text: string): DetectedEntity[] {
   const findings: DetectedEntity[] = [];
   const patterns: Array<{ type: SensitiveEntityType; regex: RegExp; severity: FindingSeverity; confidence: number }> = [
-    { type: "RG", regex: /\bRG\s*:\s*([A-Z0-9.-]{5,24})/gi, severity: "HIGH", confidence: 0.92 },
+    { type: "RG", regex: /\bRG\s*[:º°]?\s*([A-Z0-9.-]{5,24})/gi, severity: "HIGH", confidence: 0.92 },
     { type: "ADDRESS", regex: /(?:(?:Local(?: informado)?|Endereço(?: residencial)?)\s*:?\s*|(?:residir na|residente em)\s+)((?:Rua|R\.|Avenida|Av\.?|Travessa|Tv\.?|Trav\.?|Alameda|Al\.?|Praça|Pça\.?)\s+[^\n.;]{2,120})/gi, severity: "CRITICAL", confidence: 0.9 },
     { type: "ALIAS", regex: /Apelido mencionado\s*:\s*['"“]?([^'"”\n(]{2,60})/gi, severity: "MEDIUM", confidence: 0.9 },
+    { type: "ALIAS", regex: /["“]([A-ZÀ-Ý][\p{L}'-]*(?:[ \t]+[A-ZÀ-Ý][\p{L}'-]*){0,2})["”]/gu, severity: "MEDIUM", confidence: 0.88 },
     { type: "ORGANIZATION", regex: /Organização citada\s*:\s*([^\n(]{2,100})/gi, severity: "MEDIUM", confidence: 0.9 },
+    { type: "ORGANIZATION", regex: /\*\*((?:Mercearia|Farmácia|Mercadinho|Supermercado|Restaurante|Loja|Empresa|Associação|Bar|Hospital|Escola|Igreja)\s+[^*]{2,80})\*\*/giu, severity: "MEDIUM", confidence: 0.9 },
+    { type: "ORGANIZATION", regex: /\b((?:Bonde|Grupo|Facção|Organização)\s+(?:(?:do|da|de|dos|das)\s+)?[\p{Lu}][\p{L}'-]+(?:\s+[\p{Lu}][\p{L}'-]+){0,2})\b/gu, severity: "MEDIUM", confidence: 0.88 },
+    { type: "ORGANIZATION", regex: /\b(BDV)\b/g, severity: "MEDIUM", confidence: 0.86 },
     { type: "OPERATIONAL_DATA", regex: /Código operacional simulado\s*:\s*([A-Z0-9_-]{4,50})/gi, severity: "HIGH", confidence: 0.99 },
-    { type: "OCCURRENCE_ID", regex: /(?:Número de referência|Número da ocorrência|N[º°.]?\s*(?:da )?ocorrência|Protocolo(?: de atendimento)?|Registro(?: da ocorrência)?)\s*:?[ \t\r\n]*([A-Z0-9][A-Z0-9._/-]{5,50})/giu, severity: "HIGH", confidence: 0.99 },
-    { type: "ADDRESS", regex: /\b(?:na|pela|em)\s+((?:Rua|R\.|Avenida|Av\.?|Travessa|Tv\.?|Alameda|Praça|Pça\.?)\s+[A-ZÀ-Ý0-9][^,\n.;]{2,80})/giu, severity: "CRITICAL", confidence: 0.9 },
+    // Contextual quasi-identifiers that can narrow a person, event, or location.
+    { type: "OPERATIONAL_DATA", regex: /\bRelatório(?:\s+de\s+Campo)?\s+n[º°.]?\s*(\d{1,6}\/\d{4})/giu, severity: "MEDIUM", confidence: 0.9 },
+    { type: "OPERATIONAL_DATA", regex: /\b(\d{1,3}º?\s+(?:Sgt|Sargento|Cb|Cabo|Sd|Soldado|Ten|Tenente|Cap|Capitão|Maj|Major|Cel|Coronel)\s+PM)\b/giu, severity: "MEDIUM", confidence: 0.9 },
+    { type: "OPERATIONAL_DATA", regex: /\b((?:(?:Honda|Yamaha|Suzuki|Kawasaki)\s+[A-Z]{1,3}\s*\d{2,4}|(?:VW|Volkswagen|Fiat|Chevrolet|GM|Ford|Hyundai|Toyota|Renault|Nissan|Jeep)\s+[A-Z][\p{L}\d-]{1,20})(?:\s+(?:preto|preta|branco|branca|prata|cinza|vermelho|vermelha|azul|verde|amarelo|amarela))?)\b/giu, severity: "MEDIUM", confidence: 0.88 },
+    { type: "OPERATIONAL_DATA", regex: /(R\$\s?[\d.]+,\d{2})/giu, severity: "MEDIUM", confidence: 0.9 },
+    { type: "OPERATIONAL_DATA", regex: /\b(?:a|cerca de|aproximadamente)\s+(\d{1,4}\s+metros?)\b/giu, severity: "MEDIUM", confidence: 0.86 },
+    { type: "OPERATIONAL_DATA", regex: /\b(\d{1,3}\s+minutos?\s+(?:antes|depois))\b/giu, severity: "MEDIUM", confidence: 0.86 },
+    { type: "OPERATIONAL_DATA", regex: /\b(mais\s+(?:um|uma|dois|duas|três|quatro|cinco|seis|sete|oito|nove|dez|\d+)\s+(?:roubos?|ocorrências?|eventos?))\b/giu, severity: "MEDIUM", confidence: 0.86 },
+    { type: "OPERATIONAL_DATA", regex: /\b((?:sempre\s+)?às\s+(?:(?:segundas?|terças?|quartas?|quintas?|sextas?)-feiras?|sábados?|domingos?)(?:\s+(?:ou|e)\s+(?:(?:segundas?|terças?|quartas?|quintas?|sextas?)-feiras?|sábados?|domingos?))?)\b/giu, severity: "MEDIUM", confidence: 0.86 },
+    { type: "OPERATIONAL_DATA", regex: /\b(?:era|aparentava ser)\s+((?:baixo|alta?|magro|forte|robusto|magr[aá]|careca|barbado|tatuado)(?:,\s*usava\s+(?:boné|capacete|máscara|óculos|mochila|jaqueta|camisa|blusa|casaco)\s+[\p{L}-]+)?)/giu, severity: "MEDIUM", confidence: 0.86 },
+    { type: "DATE_TIME", regex: /\b(?:em|no ano de)\s+((?:19|20)\d{2})\b/giu, severity: "HIGH", confidence: 0.88 },
+    { type: "DATE_TIME", regex: /\bentre\s+(\d{1,2})(?=\s+e\s+(?:0?[1-9]|[12]\d|3[01])\/(?:0?[1-9]|1[0-2])\/(?:19|20)\d{2})/giu, severity: "HIGH", confidence: 0.86 },
+    { type: "OCCURRENCE_ID", regex: /(?:Número de referência|Número da ocorrência|N[º°.]?\s*(?:da )?ocorrência|Protocolo(?: de atendimento)?|Registro(?: da ocorrência)?)\s*:?[ \t\r\n]*([A-Z0-9][A-Z0-9._/-]{3,48}[A-Z0-9])(?![A-Z0-9])/giu, severity: "HIGH", confidence: 0.99 },
+    { type: "OCCURRENCE_ID", regex: /\b(?:BO|B\.O\.)\s*(?:n[º°.]?\s*)?:?\s*([A-Z0-9][A-Z0-9._/-]{3,48}[A-Z0-9])(?![A-Z0-9])/giu, severity: "HIGH", confidence: 0.96 },
+    { type: "ADDRESS", regex: /\b(?:na|pela|em)\s+((?:Rua|R\.|Avenida|Av\.?|Travessa|Tv\.?|Trav\.?|Alameda|Al\.?|Praça|Pça\.?)\s+(?:(?:do|da|de|dos|das)\s+)?[\p{L}\d]+(?:[ \t]+(?!com\b|na\b|no\b|nas\b|nos\b|quando\b|foi\b|em\b|sobre\b|para\b)[\p{L}\d]+){0,2})/giu, severity: "CRITICAL", confidence: 0.9 },
+    { type: "ADDRESS", regex: /(?:Rua|R\.|Avenida|Av\.?|Travessa|Tv\.?|Trav\.?|Alameda|Al\.?|Praça|Pça\.?)\s+(?:(?:do|da|de|dos|das)\s+)?[\p{L}\d]+(?:[ \t]+[\p{L}\d]+){0,2}[ \t]*,[ \t]*n[º°o.]?[ \t]*(\d{1,6}(?:\.\d{3})?)(?![\d])/giu, severity: "HIGH", confidence: 0.88 },
     { type: "ADDRESS", regex: /(?:imóvel|residência|casa|apartamento)\s+de número\s+(\d{1,6})/giu, severity: "HIGH", confidence: 0.84 },
     { type: "OPERATIONAL_UNIT", regex: /(?:Unidade fictícia|Unidade responsável|Unidade policial)\s*:?\s*([\d]{1,3}ª?\s+(?:Unidade|Batalhão|Companhia|Delegacia|Distrito)\s+[A-ZÀ-Ý][^—–\n.;]{1,50})/giu, severity: "HIGH", confidence: 0.94 },
     { type: "OPERATIONAL_UNIT", regex: /\b(\d{1,3}ª?\s+(?:Unidade|Batalhão|Companhia|Delegacia|Distrito)\s+[A-ZÀ-Ý][^—–\n.;]{1,50})/giu, severity: "HIGH", confidence: 0.9 },
+    { type: "OPERATIONAL_UNIT", regex: /\b((?:Seção|Subseção|Núcleo|Departamento|Divisão)\s+de\s+[A-ZÀ-Ý][\p{L}-]+(?:\s+[A-ZÀ-Ý][\p{L}-]+){0,2})/gu, severity: "HIGH", confidence: 0.88 },
     { type: "TEAM", regex: /\b(Equipe\s+[A-ZÀ-Ý][\p{L}0-9_-]{1,30})/giu, severity: "MEDIUM", confidence: 0.9 },
     { type: "OPERATIONAL_LOCATION", regex: /(?:Ponto de referência|Referência territorial|Área operacional)\s*:\s*([^—–\n;]{2,80})/giu, severity: "HIGH", confidence: 0.9 },
     { type: "OPERATIONAL_LOCATION", regex: /\b((?:Setor|Quadrante|Área|Região)\s+(?:de\s+)?[A-ZÀ-Ý][^—–\n.;]{1,45})/gu, severity: "HIGH", confidence: 0.86 },
 
     { type: "PERSON", regex: /(?:comunicante|testemunha)[ \t]+([A-ZÀ-Ý][\p{L}'-]+(?:[ \t]+[A-ZÀ-Ý][\p{L}'-]+){1,4})[ \t]+(?:relatou|afirmou)/giu, severity: "HIGH", confidence: 0.88 },
     { type: "PERSON", regex: /\b(?:Nome completo|Nome|Identificado como|Pessoa identificada como)\s*:\s*([A-ZÀ-Ý][\p{L}'-]*(?:\s+(?:(?:da|de|do|dos|das|e)\s+)?[A-ZÀ-Ý][\p{L}'-]*){1,4})(?=[,;\t\r\n.]|$)/giu, severity: "HIGH", confidence: 0.9 },
+    { type: "PERSON", regex: /(?:proprietária|balconista|em nome de|mãe de|anda com|conversando com)\s*,?\s*\*\*([A-ZÀ-Ý][\p{L}'-]*(?:\s+(?:(?:da|de|do|dos|das|e)\s+)?[A-ZÀ-Ý][\p{L}'-]*){1,5})\*\*/giu, severity: "HIGH", confidence: 0.9 },
+    { type: "PERSON", regex: /\*\*([A-ZÀ-Ý][\p{L}'-]*(?:\s+(?:(?:da|de|do|dos|das|e)\s+)?[A-ZÀ-Ý][\p{L}'-]*){0,4})\s*\(["“][^"”]+["”]\)\*\*/gu, severity: "HIGH", confidence: 0.88 },
+    { type: "PERSON", regex: /\bAnalista\s+([A-Z]\.\s*[A-ZÀ-Ý][\p{L}'-]*)/giu, severity: "HIGH", confidence: 0.84 },
   ];
   for (const item of patterns) {
     let match: RegExpExecArray | null;
     while ((match = item.regex.exec(text)) !== null) addContextFinding(sectionId, match, item.type, item.severity, item.confidence, findings);
   }
   findings.push(...personFindingsFromRoleBlocks(sectionId, text));
+  findings.push(...territorialReferenceFindings(sectionId, text));
   return findings;
 }
 
