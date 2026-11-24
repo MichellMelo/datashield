@@ -125,7 +125,7 @@ describe("sanitizeDocument", () => {
       "A comunicante Marina Exemplo da Silva caminhava pela Rua das Palmeiras, nas proximidades do imóvel de número 123.",
       "por volta das 21h20",
       "Ponto de referência: Setor de Testes B — área fictícia",
-    ].join("\\n");
+    ].join("\n");
     const input = document(source);
     const detected = detectSensitiveEntities(input);
     const transformed = sanitizeDocument(input, detected.findings, "pseudonymize");
