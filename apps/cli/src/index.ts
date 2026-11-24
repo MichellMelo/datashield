@@ -355,39 +355,54 @@ program.command("sanitize")
     }
 
     const decisions = parsedReview.data.findings;
-    const decisionsById = new Map(decisions.map((decision) => [decision.findingId, decision]));
-    if (decisionsById.size !== decisions.length) {
-      throw new Error("O arquivo auxiliar da revisão contém IDs de achados duplicados. Exportação bloqueada.");
-    }
-    if (decisions.length !== detected.findings.length) {
-      throw new Error("A revisão está incompleta ou pertence a outro resultado de detecção. Revise novamente todos os candidatos.");
+    const decisionKey = (item: { type: SensitiveEntityType; sectionId: string; start: number; end: number }) =>
+      item.type + ":" + item.sectionId + ":" + item.start + ":" + item.end;
+    const decisionsByKey = new Map(decisions.map((decision) => [decisionKey(decision), decision]));
+    if (decisionsByKey.size !== decisions.length) {
+      throw new Error("O arquivo auxiliar da revisão contém decisões duplicadas para o mesmo trecho. Gere uma nova revisão.");
     }
 
+    const currentFindingKeys = new Set(detected.findings.map((finding) => decisionKey(finding)));
     for (const finding of detected.findings) {
-      const decision = decisionsById.get(finding.id);
-      if (!decision
-        || decision.type !== finding.type
-        || decision.sectionId !== finding.sectionId
-        || decision.start !== finding.start
-        || decision.end !== finding.end) {
-        throw new Error("O arquivo auxiliar da revisão não contempla exatamente os achados atuais. Exportação bloqueada.");
+      const decision = decisionsByKey.get(decisionKey(finding));
+      if (!decision) {
+        throw new Error("A revisão não contempla todos os achados atuais. Gere uma nova revisão antes de exportar.");
       }
       if (decision.status === "PENDING") {
         throw new Error("Ainda existe pelo menos um candidato aguardando revisão humana. Exportação bloqueada.");
       }
     }
 
-    const confirmedIds = new Set(
-      decisions.filter((decision) => decision.status === "CONFIRMED").map((decision) => decision.findingId),
-    );
-    const rejectedFindings = detected.findings.filter((finding) => !confirmedIds.has(finding.id));
-    if (rejectedFindings.length > 0 && !options.allowReviewedRejections) {
-      throw new Error(
-        `${rejectedFindings.length} candidato(s) foram rejeitados na revisão. Execute novamente com --allow-reviewed-rejections somente depois de verificar cuidadosamente cada rejeição.`,
+    // Backward compatibility: older detector versions could emit a shorter
+    // address span nested at the same start as a broader address candidate.
+    // Accept that redundant old decision only when both human decisions agree.
+    const redundantReviewedCandidates = decisions.filter((decision) => !currentFindingKeys.has(decisionKey(decision)));
+    for (const redundant of redundantReviewedCandidates) {
+      const coveringFinding = detected.findings.find((finding) =>
+        finding.type === redundant.type
+        && finding.sectionId === redundant.sectionId
+        && finding.start === redundant.start
+        && finding.end > redundant.end
       );
+      const coveringDecision = coveringFinding
+        ? decisionsByKey.get(decisionKey(coveringFinding))
+        : undefined;
+      if (!coveringDecision || coveringDecision.status !== redundant.status || redundant.status === "PENDING") {
+        throw new Error("O arquivo de revisão contém achados que não correspondem à versão atual do detector. Gere uma nova revisão.");
+      }
     }
 
-    const confirmedFindings = detected.findings.filter((finding) => confirmedIds.has(finding.id));
+    const confirmedFindings = detected.findings.filter((finding) =>
+      decisionsByKey.get(decisionKey(finding))?.status === "CONFIRMED"
+    );
+    const rejectedFindings = detected.findings.filter((finding) =>
+      decisionsByKey.get(decisionKey(finding))?.status === "REJECTED"
+    );
+    if (rejectedFindings.length > 0 && !options.allowReviewedRejections) {
+      throw new Error(
+        rejectedFindings.length + " candidato(s) foram rejeitados na revisão. Execute novamente com --allow-reviewed-rejections somente depois de verificar cuidadosamente cada rejeição.",
+      );
+    }
     const transformed = sanitizeDocument(document, confirmedFindings, mode);
     const postScan = detectSensitiveEntities({ ...document, sections: transformed.sections });
     const independentResiduals = validateResidualContent(transformed.sections);
@@ -424,6 +439,7 @@ program.command("sanitize")
       transformedFindings: transformed.transformedCount,
       transformedByType: transformed.summary,
       reviewedRejectedCandidates: rejectedFindings.length,
+      redundantLegacyReviewDecisions: redundantReviewedCandidates.length,
       postTransformationCandidates: mergedResiduals.size,
       independentResidualCandidates: independentResiduals.length,
       finalHumanReview: "APPROVED_BY_OPERATOR_BEFORE_WRITE",
