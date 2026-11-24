@@ -55,7 +55,7 @@ describe("detectSensitiveEntities", () => {
     const cpfs = result.findings.filter((item) => item.type === "CPF");
     expect(cpfs).toHaveLength(2);
     expect(cpfs.every((item) => item.validation?.formatValid)).toBe(true);
-    expect(cpfs.every((item) => item.validation?.checksumValid === false)).toBe(true);
+    expect(cpfs.map((item) => item.validation?.checksumValid)).toEqual([false, true]);
   });
   it("keeps offsets and pending human review for every finding", () => {
     for (const finding of result.findings) {
