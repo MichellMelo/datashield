@@ -28,8 +28,8 @@ const rules: Rule[] = [
 ];
 
 function isDataShieldPlaceholder(value: string): boolean {
-  const marker = /^\[(?:DADO_REMOVIDO:[A-Z_]+|LOCALIZAÇÃO GENERALIZADA|IDENTIFICADOR REMOVIDO|CONTATO REMOVIDO|VEÍCULO|PROCEDIMENTO|ORGANIZAÇÃO NÃO IDENTIFICADA|IDENTIFICADOR PESSOAL|FONTE PROTEGIDA|DADO OPERACIONAL REMOVIDO)\]$/iu;
-  const pseudonym = /^(?:Pessoa|CPF|RG|CNPJ|Telefone|Email|Local|Coordenada|Veiculo|Chassi|Procedimento|Organizacao|Codinome|Fonte|DadoOperacional)_\d{3}$/u;
+  const marker = /^\[(?:DADO_REMOVIDO:[A-Z_]+|LOCALIZAÇÃO GENERALIZADA|IDENTIFICADOR REMOVIDO|CONTATO REMOVIDO|VEÍCULO|PROCEDIMENTO|ORGANIZAÇÃO NÃO IDENTIFICADA|IDENTIFICADOR PESSOAL|FONTE PROTEGIDA|DADO OPERACIONAL REMOVIDO|DATA\/HORÁRIO|IDENTIFICADOR DE OCORRÊNCIA|UNIDADE OPERACIONAL|EQUIPE|REFERÊNCIA TERRITORIAL)\]$/iu;
+  const pseudonym = /^(?:Pessoa|CPF|RG|CNPJ|Telefone|Email|Local|Coordenada|Veiculo|Chassi|Procedimento|Organizacao|Codinome|Fonte|DadoOperacional|DataHora|Ocorrencia|UnidadeOperacional|Equipe|LocalOperacional)_\d{3}$/u;
   return marker.test(value) || pseudonym.test(value);
 }
 
