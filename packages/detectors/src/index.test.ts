@@ -90,6 +90,38 @@ describe("detectSensitiveEntities", () => {
     }
   });
 
+  it("detects contextual dates, occurrence IDs, narrative addresses and operational references", () => {
+    const source = [
+      "Data e horário",
+      "18/11/2026 — 21h35",
+      "Número de referência",
+      "SIM-2026-000184",
+      "Unidade fictícia",
+      "21ª Unidade Demonstrativa — Equipe Alfa",
+      "A comunicante Pessoa_002 caminhava pela Rua das Palmeiras, nas proximidades do imóvel de número 123, quando foi abordada.",
+      "por volta das 21h20",
+      "Ponto de referência: Setor de Testes B — área fictícia",
+    ].join("\n");
+    const document: ExtractedDocument = {
+      id: "context-test", format: "DOCX",
+      sections: [{ id: "context-text", type: "TEXT", content: source }],
+    };
+    const findings = detectSensitiveEntities(document).findings;
+    const values = (type: typeof findings[number]["type"]) =>
+      findings.filter((item) => item.type === type).map((item) => item.value);
+
+    expect(values("DATE_TIME")).toEqual(["18/11/2026", "21h35", "21h20"]);
+    expect(values("OCCURRENCE_ID")).toContain("SIM-2026-000184");
+    expect(values("ADDRESS")).toContain("Rua das Palmeiras");
+    expect(values("ADDRESS")).toContain("123");
+    expect(values("OPERATIONAL_UNIT")).toContain("21ª Unidade Demonstrativa");
+    expect(values("TEAM")).toContain("Equipe Alfa");
+    expect(values("OPERATIONAL_LOCATION")).toContain("Setor de Testes B");
+    for (const finding of findings) {
+      expect(source.slice(finding.start, finding.end)).toBe(finding.value);
+    }
+  });
+
   it("does not interpret a hyphenated reference number as a vehicle plate", () => {
     const plateDocument: ExtractedDocument = {
       id: "plate-test", format: "DOCX",
