@@ -13,6 +13,10 @@ Local-first document inspection and sensitive-entity detection CLI built with No
 - CPF pattern recognition is separate from checksum validation.
 - `evaluate` measures precision, recall and F1 against a human-authored ground-truth JSON file, including false-positive and false-negative counts.
 - `review` supports interactive local confirmation/rejection/skip and writes a sidecar JSON with decisions and offsets, without candidate values or source text.
+- `sanitize` applies only human-confirmed findings and requires the sidecar to match the exact source SHA-256 and current finding offsets.
+- The first transformation implementation exports rebuilt extracted text to TXT only: redaction, document-local pseudonyms or broad category placeholders.
+- A post-transformation scan blocks export when residual candidates do not exactly match the reviewer's explicit rejections.
+- Output is created separately with exclusive-write protection; an audit report records counts and warnings without storing finding values or source text.
 - Detection values stay hidden in ordinary CLI output unless explicitly requested.
 - Input size is limited to 25 MiB by default.
 
@@ -63,6 +67,28 @@ During review enter:
 
 The review sidecar records candidate IDs, type, severity, confidence, offsets, decisions, timestamp and source SHA-256. It intentionally does **not** store the detected values or source text. Candidate values are displayed in the terminal during review, so use only synthetic data or a trusted local environment. The output file is created with exclusive-write protection and will not overwrite an existing file.
 
+### 5. Transform the reviewed synthetic document
+
+After every detected candidate has been confirmed or rejected, create a separate TXT copy:
+
+```bash
+npm run dev -- sanitize ./datashield_documento_ficticio_teste.docx --review ./datashield-review.json --mode pseudonymize --output ./output/aula-desidentificada.txt
+```
+
+Available modes:
+
+- `redact`: replaces each confirmed candidate with a category marker such as `[DADO_REMOVIDO:CPF]`.
+- `pseudonymize` (default): replaces repeated values of the same category with the same document-local token, such as `Pessoa_001`. No correspondence table is saved, and tokens are not stable across documents.
+- `generalize`: replaces candidates with broad labels such as `[LOCALIZAÇÃO GENERALIZADA]`; it does not calculate safe geographic areas or generalized dates.
+
+By default, export is blocked when the review contains rejected candidates. Only after checking every rejection, the operator may explicitly allow those candidates to remain unchanged:
+
+```bash
+npm run dev -- sanitize ./datashield_documento_ficticio_teste.docx --review ./datashield-review.json --mode pseudonymize --allow-reviewed-rejections --output ./output/aula-desidentificada.txt
+```
+
+The command writes a separate TXT and a `.report.json` audit report. It never overwrites the source or an existing output. It rebuilds only text returned by extraction; it does not recreate PDF/DOCX formatting, preserve the original file structure or inspect content that the extractor did not obtain. The post-scan is a useful safeguard, not proof that all identifying information has been removed.
+
 ## Understanding evaluation metrics
 
 - **TP (true positive):** a detected occurrence that matches the ground truth.
@@ -108,4 +134,4 @@ Matching requires the same entity type and normalized value. The evaluator norma
 
 ## Status
 
-Inspection, first-pass detection, ground-truth evaluation and interactive review are implemented for development/education. Sanitization remains deliberately disabled. Run dependency installation, type-checking, tests and build locally before relying on the result.
+Inspection, first-pass detection, ground-truth evaluation, interactive review and an initial reviewed text-transformation command are implemented for development/education. This feature is experimental and is not an anonymization system or approved workflow for real documents. Run dependency installation, type-checking, tests and build locally before relying on the result.
