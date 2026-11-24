@@ -64,7 +64,11 @@ describe("validateResidualContent", () => {
       "O Bonde do Vale também é citado como BDV.",
       "O assunto envolve os bairros Jardim Aurora, Vila Esperança e Centro Velho.",
       "A ocorrência foi registrada no BO nº 2026/118.455.",
-      "A testemunha passou pela Av. Central, nº 1.540, às 19h e às 21h."
+      "A testemunha passou pela Av. Central, nº 1.540, às 19h e às 21h.",
+      "Relatório de Campo nº 047/2026; 2º Sgt PM.",
+      "Motocicleta Honda CG 160 vermelha e veículo VW Gol prata.",
+      "Valor R$ 1.200,00; estacionada a 50 metros do local, 15 minutos antes.",
+      "Entre 17 e 27/10/2026, em 2023, foram mais seis roubos, sempre às sextas-feiras ou sábados."
     ].join("\n");
 
     const findings = validateResidualContent([{ id: "report", content: text }]);
@@ -81,6 +85,18 @@ describe("validateResidualContent", () => {
     expect(byType("OCCURRENCE_ID").map((finding) => finding.value)).toContain("2026/118.455");
     expect(byType("ADDRESS").map((finding) => finding.value)).toContain("1.540");
     expect(byType("DATE_TIME").map((finding) => finding.value)).toContain("19h");
+    expect(byType("DATE_TIME").map((finding) => finding.value)).toContain("17");
+    expect(byType("DATE_TIME").map((finding) => finding.value)).toContain("2023");
+    const operationalValues = byType("OPERATIONAL_DATA").map((finding) => finding.value);
+    expect(operationalValues).toContain("047/2026");
+    expect(operationalValues).toContain("2º Sgt PM");
+    expect(operationalValues).toContain("Honda CG 160 vermelha");
+    expect(operationalValues).toContain("VW Gol prata");
+    expect(operationalValues).toContain("R$ 1.200,00");
+    expect(operationalValues).toContain("50 metros");
+    expect(operationalValues).toContain("15 minutos antes");
+    expect(operationalValues).toContain("mais seis roubos");
+    expect(operationalValues).toContain("sempre às sextas-feiras ou sábados");
 
     for (const finding of findings) {
       expect(text.slice(finding.start, finding.end)).toBe(finding.value);
