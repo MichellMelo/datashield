@@ -37,7 +37,7 @@ Converse sobre formato, tamanho, quantidade de seções e caracteres extraídos.
 npm run dev -- detect ./datashield_documento_ficticio_teste.docx
 ```
 
-Observe categorias, quantidade, criticidade, confiança e posições. Os valores ficam ocultos por padrão.
+Observe categorias, quantidade, criticidade, confiança e posições. O DataShield também procura datas e horários, números de ocorrência, equipes, unidades operacionais e referências territoriais. Os valores ficam ocultos por padrão.
 
 ### 3. Avaliar precisão e cobertura
 
@@ -89,7 +89,7 @@ npm run dev -- sanitize ./datashield_documento_ficticio_teste.docx --review ./da
 
 O comando confere o SHA-256 do original, exige uma decisão para cada achado e verifica novamente o TXT antes de gravar. Se aparecer um candidato residual que não corresponda exatamente às rejeições revisadas, a exportação será bloqueada. O relatório JSON registra quantidades e avisos sem copiar os valores encontrados.
 
-O resultado é texto extraído, não uma reconstrução do DOCX/PDF. A extração não garante captura de OCR, imagens, metadados, comentários, cabeçalhos, rodapés ou conteúdo oculto. A ausência de achados na segunda varredura não prova anonimização.
+O resultado é texto extraído, não uma reconstrução do DOCX/PDF. A extração não garante captura de OCR, imagens, metadados, comentários, cabeçalhos, rodapés ou conteúdo oculto. A ausência de achados nas duas verificações não prova anonimização. As regras são heurísticas e podem não reconhecer nomes sem contexto, detalhes raros ou combinações que permitam reidentificação.
 
 ### 6. Encerrar e discutir limitações
 
