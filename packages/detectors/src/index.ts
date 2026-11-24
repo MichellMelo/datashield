@@ -85,12 +85,13 @@ function contextualFindings(sectionId: string, text: string): DetectedEntity[] {
   const findings: DetectedEntity[] = [];
   const patterns: Array<{ type: SensitiveEntityType; regex: RegExp; severity: FindingSeverity; confidence: number }> = [
     { type: "RG", regex: /\bRG\s*:\s*([A-Z0-9.-]{5,24})/gi, severity: "HIGH", confidence: 0.92 },
-    { type: "ADDRESS", regex: /(?:Local informado\s*:?\s*|residir na\s+)((?:Rua|Avenida|Av\.|Travessa|Alameda|Praça)\s+[^\n.;]{3,120})/gi, severity: "CRITICAL", confidence: 0.9 },
+    { type: "ADDRESS", regex: /(?:Local(?: informado)?|Endereço(?: residencial)?)\s*:?\s*((?:Rua|R\.|Avenida|Av\.?|Travessa|Tv\.?|Trav\.?|Alameda|Al\.?|Praça|Pça\.?)\s*[^\n.;]{2,120}|residir na\s+((?:Rua|R\.|Avenida|Av\.?|Travessa|Tv\.?|Trav\.?|Alameda|Al\.?|Praça|Pça\.?)\s*[^\n.;]{2,120})|residente em\s+((?:Rua|R\.|Avenida|Av\.?|Travessa|Tv\.?|Trav\.?|Alameda|Al\.?|Praça|Pça\.?)\s*[^\n.;]{2,120}))/gi, severity: "CRITICAL", confidence: 0.9 },
     { type: "ALIAS", regex: /Apelido mencionado\s*:\s*['"“]?([^'"”\n(]{2,60})/gi, severity: "MEDIUM", confidence: 0.9 },
     { type: "ORGANIZATION", regex: /Organização citada\s*:\s*([^\n(]{2,100})/gi, severity: "MEDIUM", confidence: 0.9 },
     { type: "OPERATIONAL_DATA", regex: /Código operacional simulado\s*:\s*([A-Z0-9_-]{4,50})/gi, severity: "HIGH", confidence: 0.99 },
 
     { type: "PERSON", regex: /(?:comunicante|testemunha)\s+([A-ZÀ-Ý][\p{L}'-]+(?:\s+[A-ZÀ-Ý][\p{L}'-]+){1,4})\s+(?:relatou|afirmou)/giu, severity: "HIGH", confidence: 0.88 },
+    { type: "PERSON", regex: /(?:Nome completo|Nome|Identificado como|Pessoa identificada como)\s*:\s*([A-ZÀ-Ý][\p{L}'-]*(?:\s+(?:(?:da|de|do|dos|das|e)\s+)?[A-ZÀ-Ý][\p{L}'-]*){1,4})(?=[,;\t\r\n.]|$)/giu, severity: "HIGH", confidence: 0.9 },
   ];
   for (const item of patterns) {
     let match: RegExpExecArray | null;
