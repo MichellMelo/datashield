@@ -11,12 +11,14 @@ import type { DetectedEntity, SensitiveEntityType } from "../../../packages/core
 import { detectSensitiveEntities } from "../../../packages/detectors/src/index.js";
 import { evaluateDetections } from "../../../packages/detectors/src/evaluate.js";
 import { sanitizeDocument, type SanitizationMode } from "../../../packages/sanitizers/src/index.js";
+import { validateResidualContent } from "../../../packages/sanitizers/src/validate.js";
 import { extractDocument, inspectDocument } from "../../../packages/extractors/src/index.js";
 
 const ENTITY_TYPES = [
   "PERSON", "CPF", "RG", "CNPJ", "PHONE", "EMAIL", "ADDRESS", "GPS",
   "VEHICLE_PLATE", "VEHICLE_CHASSIS", "PROCESS_NUMBER", "ORGANIZATION",
-  "ALIAS", "SOURCE", "OPERATIONAL_DATA",
+  "ALIAS", "SOURCE", "OPERATIONAL_DATA", "DATE_TIME", "OCCURRENCE_ID",
+  "OPERATIONAL_UNIT", "TEAM", "OPERATIONAL_LOCATION",
 ] as const;
 
 const groundTruthSchema = z.object({
@@ -52,6 +54,9 @@ const ENTITY_LABELS: Record<SensitiveEntityType, string> = {
   VEHICLE_PLATE: "PLACA DE VEÍCULO", VEHICLE_CHASSIS: "CHASSI",
   PROCESS_NUMBER: "NÚMERO DE PROCEDIMENTO", ORGANIZATION: "ORGANIZAÇÃO",
   ALIAS: "APELIDO", SOURCE: "FONTE", OPERATIONAL_DATA: "DADO OPERACIONAL",
+  DATE_TIME: "DATA/HORÁRIO", OCCURRENCE_ID: "IDENTIFICADOR DE OCORRÊNCIA",
+  OPERATIONAL_UNIT: "UNIDADE OPERACIONAL", TEAM: "EQUIPE",
+  OPERATIONAL_LOCATION: "REFERÊNCIA TERRITORIAL",
 };
 const SEVERITY_LABELS: Record<"CRITICAL" | "HIGH" | "MEDIUM", string> = {
   CRITICAL: "CRÍTICA", HIGH: "ALTA", MEDIUM: "MÉDIA",
@@ -378,26 +383,37 @@ program.command("sanitize")
     const rejectedFindings = detected.findings.filter((finding) => !confirmedIds.has(finding.id));
     if (rejectedFindings.length > 0 && !options.allowReviewedRejections) {
       throw new Error(
-        `${rejectedFindings.length}  candidato(s) foram rejeitados na revisão. Execute novamente com --allow-reviewed-rejections somente depois de verificar cuidadosamente cada rejeição.`,
+        `${rejectedFindings.length} candidato(s) foram rejeitados na revisão. Execute novamente com --allow-reviewed-rejections somente depois de verificar cuidadosamente cada rejeição.`,
       );
     }
 
     const confirmedFindings = detected.findings.filter((finding) => confirmedIds.has(finding.id));
     const transformed = sanitizeDocument(document, confirmedFindings, mode);
     const postScan = detectSensitiveEntities({ ...document, sections: transformed.sections });
+    const independentResiduals = validateResidualContent(transformed.sections);
+    const mergedResiduals = new Map<string, { type: SensitiveEntityType; value: string }>();
+    for (const finding of postScan.findings) {
+      const key = \`\${finding.type}:\${finding.sectionId}:\${finding.start}:\${finding.end}\`;
+      mergedResiduals.set(key, { type: finding.type, value: finding.value });
+    }
+    for (const finding of independentResiduals) {
+      const key = \`\${finding.type}:\${finding.sectionId}:\${finding.start}:\${finding.end}\`;
+      mergedResiduals.set(key, { type: finding.type, value: finding.value });
+    }
+
     const expectedRemainders = countFingerprints(rejectedFindings);
-    const actualRemainders = countFingerprints(postScan.findings);
+    const actualRemainders = countFingerprints([...mergedResiduals.values()]);
     if (!sameCounts(expectedRemainders, actualRemainders)) {
       throw new Error(
-        `A validação após a transformação encontrou ${postScan.findings.length} candidato(s), que não correspondem às exclusões revisadas. Exportação bloqueada.`,
+        \`A validação encontrou \${mergedResiduals.size} candidato(s) residual(is), incluindo \${independentResiduals.length} na verificação independente. O resultado não corresponde às rejeições aprovadas. Exportação bloqueada.\`,
       );
     }
 
     const content = [
       "[DataShield — cópia transformada para exercício; não certifica anonimização]",
-      ...transformed.sections.map((section, index) => `### Seção ${index + 1}\n${section.content}`),
+      ...transformed.sections.map((section, index) => \`### Seção \${index + 1}\\n\${section.content}\`),
       "",
-    ].join("\n\n");
+    ].join("\\n\\n");
     const report = {
       schemaVersion: 1,
       createdAt: new Date().toISOString(),
@@ -408,7 +424,9 @@ program.command("sanitize")
       transformedFindings: transformed.transformedCount,
       transformedByType: transformed.summary,
       reviewedRejectedCandidates: rejectedFindings.length,
-      postTransformationCandidates: postScan.findings.length,
+      postTransformationCandidates: mergedResiduals.size,
+      independentResidualCandidates: independentResiduals.length,
+      finalHumanReview: "REQUIRED_BEFORE_EXPORT",
       validationStatus: rejectedFindings.length === 0 ? "PASS_NO_RESIDUAL_CANDIDATES" : "PASS_WITH_REVIEWED_REJECTIONS",
       warnings: [
         "Esta é uma transformação de texto revisada, não uma garantia de anonimização ou conformidade legal.",
@@ -417,6 +435,24 @@ program.command("sanitize")
         "Somente as seções de texto extraídas foram exportadas para TXT; a formatação original e os metadados do documento não foram preservados.",
       ],
     };
+
+    if (!stdin.isTTY || !stdout.isTTY) {
+      throw new Error("A aprovação final exige um terminal interativo. Nenhum arquivo foi exportado.");
+    }
+    console.log(pc.bold("\\n=== REVISÃO FINAL DO TEXTO TRANSFORMADO ==="));
+    console.log(pc.yellow("Leia o conteúdo abaixo. Verifique endereços, datas, horários, nomes, referências territoriais e detalhes raros que possam identificar pessoas."));
+    console.log(content);
+    const approvalRl = createInterface({ input: stdin, output: stdout });
+    let approval = "";
+    try {
+      approval = (await approvalRl.question("Após conferir todo o texto, deseja aprovar a gravação do TXT? [s/n]: "))
+        .trim().toLocaleLowerCase("pt-BR");
+    } finally {
+      approvalRl.close();
+    }
+    if (approval !== "s" && approval !== "sim") {
+      throw new Error("Exportação cancelada pelo operador. Nenhum arquivo final foi gravado.");
+    }
 
     await mkdir(dirname(outputPath), { recursive: true });
     await mkdir(dirname(reportPath), { recursive: true });
@@ -431,7 +467,9 @@ program.command("sanitize")
     console.log(pc.bold("DataShield — transformação de texto revisada"));
     console.log(`Modo: ${mode}`);
     console.log(`Candidatos transformados: ${transformed.transformedCount}`);
-    console.log(`Candidatos após a transformação: ${postScan.findings.length}`);
+    console.log(`Candidatos após a transformação: ${mergedResiduals.size}`);
+    console.log(`Achados na validação independente: ${independentResiduals.length}`);
+    console.log("Revisão humana final: APROVADA");
     console.log(`Arquivo TXT de saída: ${outputPath}`);
     console.log(`Relatório de auditoria: ${reportPath}`);
     if (rejectedFindings.length > 0) {
