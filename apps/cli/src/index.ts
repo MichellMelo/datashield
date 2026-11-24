@@ -160,7 +160,7 @@ program.command("detect")
       if (finding.validation?.checksumValid === false) console.log(pc.yellow("    Formato reconhecido; dígitos verificadores inválidos."));
     }
     console.log(pc.yellow("\nSomente detecção. Os achados exigem revisão humana. Não foi realizada transformação ou anonimização."));
-    if (!options.showValues) console.log(pc.dim("Values hidden. Use --show-values only in a trusted terminal."));
+    if (!options.showValues) console.log(pc.dim("Valores ocultos. Use --show-values somente com dados sintéticos e em um terminal confiável."));
   });
 
 program.command("evaluate")
@@ -222,9 +222,9 @@ program.command("review")
     try {
       for (let index = 0; index < result.findings.length; index += 1) {
         const finding: DetectedEntity = result.findings[index]!;
-        console.log(pc.bold(`[${index + 1}/${result.findings.length}] ${finding.type} — ${finding.severity}`));
+        console.log(pc.bold(`[${index + 1}/${result.findings.length}] ${ENTITY_LABELS[finding.type]} — ${SEVERITY_LABELS[finding.severity]}`));
         console.log(`Valor: ${finding.value}`);
-        console.log(`Localização: ${finding.sectionId} chars ${finding.start}-${finding.end} | confiança: ${finding.confidence}`);
+        console.log(`Localização: ${finding.sectionId} | caracteres ${finding.start}-${finding.end} | confiança: ${finding.confidence}`);
         let status: "CONFIRMED" | "REJECTED" | "PENDING" = "PENDING";
         while (true) {
           const answer = (await rl.question("Decisão [c/r/s/q]: ")).trim().toLowerCase();
@@ -249,7 +249,7 @@ program.command("review")
     const sourceSha256 = createHash("sha256").update(await readFile(file)).digest("hex");
     const report = {
       schemaVersion: 1,
-      sourceArquivo: basename(file),
+      sourceFile: basename(file),
       sourceSha256,
       documentId: document.id,
       createdAt: new Date().toISOString(),
@@ -402,13 +402,13 @@ program.command("sanitize")
       schemaVersion: 1,
       createdAt: new Date().toISOString(),
       sourceSha256,
-      sourceFormato: document.format,
-      outputArquivo: basename(outputPath),
+      sourceFormat: document.format,
+      outputFile: basename(outputPath),
       mode,
-      transformedAchados: transformed.transformedCount,
+      transformedFindings: transformed.transformedCount,
       transformedByType: transformed.summary,
-      reviewedRejectedCandidatos: rejectedFindings.length,
-      postTransformationCandidatos: postScan.findings.length,
+      reviewedRejectedCandidates: rejectedFindings.length,
+      postTransformationCandidates: postScan.findings.length,
       validationStatus: rejectedFindings.length === 0 ? "PASS_NO_RESIDUAL_CANDIDATES" : "PASS_WITH_REVIEWED_REJECTIONS",
       warnings: [
         "Esta é uma transformação de texto revisada, não uma garantia de anonimização ou conformidade legal.",
