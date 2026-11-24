@@ -4,6 +4,6 @@
   "private": true,
   "type": "module",
   "bin": {
-    "datashield": "./dist/index.js"
+    "datashield": "../../dist/apps/cli/src/index.js"
   }
 }
