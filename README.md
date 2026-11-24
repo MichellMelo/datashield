@@ -2,7 +2,7 @@
 
 Local-first document inspection and sensitive-entity detection CLI built with Node.js and TypeScript.
 
-> **Security notice:** This is an educational/development tool, not approved for processing real sensitive, classified or law-enforcement documents. Detection is a candidate-finding aid, not proof of identity or data validity. Sanitization and safe export are deliberately disabled.
+> **Security notice:** This is an educational/development tool, not approved for processing real sensitive, classified or law-enforcement documents. Detection is a candidate-finding aid, not proof of identity or data validity. The experimental `sanitize` command transforms extracted text into a new TXT file only; it does not guarantee anonymization or provide approved safe export.
 
 ## Current implementation
 
@@ -106,7 +106,7 @@ Matching requires the same entity type and normalized value. The evaluator norma
 - packages/core: domain contracts.
 - packages/extractors: PDF, DOCX and CSV extraction adapters.
 - packages/detectors: deterministic pattern/context detection and evaluation metrics.
-- packages/sanitizers: planned; not implemented.
+- packages/sanitizers: human-reviewed text transformations with offset and post-scan validation.
 - packages/exporters: planned; not implemented.
 - packages/infrastructure: planned; not implemented.
 
