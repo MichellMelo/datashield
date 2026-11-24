@@ -52,7 +52,7 @@ async function extractPdf(buffer: Buffer): Promise<DocumentSection[]> {
         .filter((item) => "str" in item)
         .map((item) => ("str" in item ? item.str : ""))
         .join(" ")
-        .replace(/\\s+/g, " ")
+        .replace(/\s+/g, " ")
         .trim();
       sections.push({ id: `page-${pageNumber}`, type: "TEXT", content: text, page: pageNumber });
     }
