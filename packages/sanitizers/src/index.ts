@@ -141,18 +141,60 @@ function buildPersonIdentityKeys(
   return { byName, warnings: [...new Set(warnings)] };
 }
 
+function organizationInitials(value: string): string {
+  const words = value.trim().split(/\\s+/u).filter(Boolean);
+  return words.map((word) => [...normalizeKey(word)][0] ?? "").join("");
+}
+
+function buildOrganizationIdentityKeys(
+  findings: DetectedEntity[],
+): { byName: Map<string, string>; warnings: string[] } {
+  const organizations = findings.filter((finding) => finding.type === "ORGANIZATION");
+  const fullNames = new Map<string, Set<string>>();
+  const acronyms = new Set<string>();
+
+  for (const finding of organizations) {
+    const value = finding.value.trim();
+    if (/^\\p{Lu}{2,6}$/u.test(value)) {
+      acronyms.add(normalizeKey(value));
+      continue;
+    }
+    if (!/\\s/u.test(value)) continue;
+    const initials = organizationInitials(value);
+    const names = fullNames.get(initials) ?? new Set<string>();
+    names.add(normalizeKey(value));
+    fullNames.set(initials, names);
+  }
+
+  const byName = new Map<string, string>();
+  const warnings: string[] = [];
+  for (const acronym of acronyms) {
+    const matches = fullNames.get(acronym);
+    if (!matches || matches.size === 0) continue;
+    if (matches.size > 1) {
+      warnings.push("Uma sigla de organização corresponde a mais de um nome no documento; os pseudônimos foram mantidos separados para evitar uma associação automática incorreta.");
+      continue;
+    }
+    const canonical = [...matches][0]!;
+    byName.set(acronym, canonical);
+    byName.set(canonical, canonical);
+  }
+
+  return { byName, warnings };
+}
+
 function makeReplacement(
   finding: DetectedEntity,
   mode: SanitizationMode,
   pseudonyms: Map<string, string>,
   counters: Map<SensitiveEntityType, number>,
-  personIdentityKeys: Map<string, string>,
+  identityKeys: Map<string, string>,
 ): string {
   if (mode === "redact") return `[DADO_REMOVIDO:${finding.type}]`;
   if (mode === "generalize") return generalizedLabels[finding.type];
 
-  const identityKey = finding.type === "PERSON"
-    ? personIdentityKeys.get(normalizeKey(finding.value))
+  const identityKey = (finding.type === "PERSON" || finding.type === "ORGANIZATION")
+    ? identityKeys.get(normalizeKey(finding.value))
     : undefined;
   const key = `${finding.type}:${identityKey ?? normalizeKey(finding.value)}`;
   const existing = pseudonyms.get(key);
@@ -186,9 +228,16 @@ export function sanitizeDocument(
   const pseudonyms = new Map<string, string>();
   const counters = new Map<SensitiveEntityType, number>();
   const summary: Partial<Record<SensitiveEntityType, number>> = {};
-  const identity = mode === "pseudonymize"
+  const personIdentity = mode === "pseudonymize"
     ? buildPersonIdentityKeys(document.sections, findings)
     : { byName: new Map<string, string>(), warnings: [] as string[] };
+  const organizationIdentity = mode === "pseudonymize"
+    ? buildOrganizationIdentityKeys(findings)
+    : { byName: new Map<string, string>(), warnings: [] as string[] };
+  const identity = {
+    byName: new Map([...personIdentity.byName, ...organizationIdentity.byName]),
+    warnings: [...personIdentity.warnings, ...organizationIdentity.warnings],
+  };
 
   const sections = document.sections.map((section) => {
     const sectionFindings = findingsBySection.get(section.id) ?? [];
