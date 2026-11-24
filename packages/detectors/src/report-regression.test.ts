@@ -44,15 +44,33 @@ describe("field report DOCX regression", () => {
   it("detects the 72 expected occurrences across the report categories", () => {
     const result = detectSensitiveEntities(document);
 
-    expect(result.findings).toHaveLength(72);
+    expect(result.findings).toHaveLength(83);
     expect(result.findings.find((finding) => finding.type === "OCCURRENCE_ID")?.value)
       .toBe("2026/118.455");
+    const operationalValues = result.findings
+      .filter((finding) => finding.type === "OPERATIONAL_DATA")
+      .map((finding) => finding.value);
+    expect(operationalValues).toContain("047/2026");
+    expect(operationalValues).toContain("2º Sgt PM");
+    expect(operationalValues).toContain("Honda CG 160 vermelha");
+    expect(operationalValues).toContain("VW Gol prata");
+    expect(operationalValues).toContain("R$ 1.200,00");
+    expect(operationalValues).toContain("50 metros");
+    expect(operationalValues).toContain("15 minutos antes");
+    expect(operationalValues).toContain("mais seis roubos");
+    expect(operationalValues).toContain("sempre às sextas-feiras ou sábados");
+    const dateValues = result.findings
+      .filter((finding) => finding.type === "DATE_TIME")
+      .map((finding) => finding.value);
+    expect(dateValues).toContain("17");
+    expect(dateValues).toContain("2023");
     expect(result.summary).toEqual({
       ADDRESS: 10,
       ALIAS: 10,
       CPF: 3,
-      DATE_TIME: 14,
+      DATE_TIME: 16,
       OCCURRENCE_ID: 1,
+      OPERATIONAL_DATA: 9,
       OPERATIONAL_LOCATION: 8,
       OPERATIONAL_UNIT: 1,
       ORGANIZATION: 6,
