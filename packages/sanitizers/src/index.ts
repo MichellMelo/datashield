@@ -10,6 +10,7 @@ export interface SanitizationResult {
   sections: ExtractedDocument["sections"];
   transformedCount: number;
   summary: Partial<Record<SensitiveEntityType, number>>;
+  identityWarnings: string[];
 }
 
 const pseudonymPrefixes: Record<SensitiveEntityType, string> = {
@@ -66,16 +67,94 @@ function normalizeKey(value: string): string {
     .replace(/[^\p{L}\p{N}]/gu, "");
 }
 
+function buildPersonIdentityKeys(
+  sections: ExtractedDocument["sections"],
+  findings: DetectedEntity[],
+): { byName: Map<string, string>; warnings: string[] } {
+  const peopleByAlias = new Map<string, Map<string, string>>();
+
+  for (const section of sections) {
+    const sectionFindings = findings.filter((finding) => finding.sectionId === section.id);
+    const people = sectionFindings.filter((finding) => finding.type === "PERSON");
+    const aliases = sectionFindings.filter((finding) => finding.type === "ALIAS");
+
+    for (const person of people) {
+      let nearest: { alias: DetectedEntity; distance: number } | undefined;
+      for (const alias of aliases) {
+        if (person.end > alias.start) continue;
+        const gap = section.content.slice(person.end, alias.start);
+        if (gap.length > 40 || /[.!?\\r\\n]/u.test(gap)) continue;
+
+        const introducedByAlias = /\\b(?:vulgo|alcunha|apelid[oa])\\b/iu.test(gap);
+        const parentheticalAlias = /^\\s*\\(\\s*["“']?\\s*$/u.test(gap);
+        if (!introducedByAlias && !parentheticalAlias) continue;
+
+        const distance = alias.start - person.end;
+        if (!nearest || distance < nearest.distance) nearest = { alias, distance };
+      }
+
+      if (!nearest) continue;
+      const aliasKey = normalizeKey(nearest.alias.value);
+      const personKey = normalizeKey(person.value);
+      const group = peopleByAlias.get(aliasKey) ?? new Map<string, string>();
+      group.set(personKey, person.value);
+      peopleByAlias.set(aliasKey, group);
+    }
+  }
+
+  const proposedKeys = new Map<string, Set<string>>();
+  const warnings: string[] = [];
+
+  for (const [aliasKey, people] of peopleByAlias) {
+    const variants = [...people.entries()];
+    if (variants.length < 2) continue;
+
+    const fullNames = variants.filter(([, value]) => value.trim().split(/\\s+/u).length > 1);
+    const canonical = fullNames.length === 1 ? fullNames[0] : undefined;
+    const firstNameKey = canonical
+      ? normalizeKey(canonical[1].trim().split(/\\s+/u)[0] ?? "")
+      : "";
+    const safeAbbreviationGroup = Boolean(canonical)
+      && variants.every(([nameKey]) => nameKey === canonical![0] || nameKey === firstNameKey);
+
+    if (!safeAbbreviationGroup || !canonical) {
+      warnings.push("Um mesmo apelido está associado a nomes diferentes; os pseudônimos foram mantidos separados para evitar uma associação automática incorreta.");
+      continue;
+    }
+
+    for (const [nameKey] of variants) {
+      const candidates = proposedKeys.get(nameKey) ?? new Set<string>();
+      candidates.add(canonical[0]);
+      proposedKeys.set(nameKey, candidates);
+    }
+  }
+
+  const byName = new Map<string, string>();
+  for (const [nameKey, candidates] of proposedKeys) {
+    if (candidates.size === 1) {
+      byName.set(nameKey, [...candidates][0]!);
+    } else {
+      warnings.push("Uma referência pessoal participa de associações ambíguas; os pseudônimos foram mantidos separados.");
+    }
+  }
+
+  return { byName, warnings: [...new Set(warnings)] };
+}
+
 function makeReplacement(
   finding: DetectedEntity,
   mode: SanitizationMode,
   pseudonyms: Map<string, string>,
   counters: Map<SensitiveEntityType, number>,
+  personIdentityKeys: Map<string, string>,
 ): string {
   if (mode === "redact") return `[DADO_REMOVIDO:${finding.type}]`;
   if (mode === "generalize") return generalizedLabels[finding.type];
 
-  const key = `${finding.type}:${normalizeKey(finding.value)}`;
+  const identityKey = finding.type === "PERSON"
+    ? personIdentityKeys.get(normalizeKey(finding.value))
+    : undefined;
+  const key = `${finding.type}:${identityKey ?? normalizeKey(finding.value)}`;
   const existing = pseudonyms.get(key);
   if (existing) return existing;
 
@@ -107,6 +186,9 @@ export function sanitizeDocument(
   const pseudonyms = new Map<string, string>();
   const counters = new Map<SensitiveEntityType, number>();
   const summary: Partial<Record<SensitiveEntityType, number>> = {};
+  const identity = mode === "pseudonymize"
+    ? buildPersonIdentityKeys(document.sections, findings)
+    : { byName: new Map<string, string>(), warnings: [] as string[] };
 
   const sections = document.sections.map((section) => {
     const sectionFindings = findingsBySection.get(section.id) ?? [];
@@ -130,7 +212,7 @@ export function sanitizeDocument(
 
     let content = section.content;
     for (const finding of [...ordered].reverse()) {
-      const replacement = makeReplacement(finding, mode, pseudonyms, counters);
+      const replacement = makeReplacement(finding, mode, pseudonyms, counters, identity.byName);
       content = content.slice(0, finding.start) + replacement + content.slice(finding.end);
       summary[finding.type] = (summary[finding.type] ?? 0) + 1;
     }
@@ -148,5 +230,6 @@ export function sanitizeDocument(
     sections,
     transformedCount: findings.length,
     summary,
+    identityWarnings: identity.warnings,
   };
 }
