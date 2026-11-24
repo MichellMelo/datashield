@@ -28,6 +28,11 @@ const pseudonymPrefixes: Record<SensitiveEntityType, string> = {
   ALIAS: "Codinome",
   SOURCE: "Fonte",
   OPERATIONAL_DATA: "DadoOperacional",
+  DATE_TIME: "DataHora",
+  OCCURRENCE_ID: "Ocorrencia",
+  OPERATIONAL_UNIT: "UnidadeOperacional",
+  TEAM: "Equipe",
+  OPERATIONAL_LOCATION: "LocalOperacional",
 };
 
 const generalizedLabels: Record<SensitiveEntityType, string> = {
@@ -46,6 +51,11 @@ const generalizedLabels: Record<SensitiveEntityType, string> = {
   ALIAS: "[IDENTIFICADOR PESSOAL]",
   SOURCE: "[FONTE PROTEGIDA]",
   OPERATIONAL_DATA: "[DADO OPERACIONAL REMOVIDO]",
+  DATE_TIME: "[DATA/HORÁRIO]",
+  OCCURRENCE_ID: "[IDENTIFICADOR DE OCORRÊNCIA]",
+  OPERATIONAL_UNIT: "[UNIDADE OPERACIONAL]",
+  TEAM: "[EQUIPE]",
+  OPERATIONAL_LOCATION: "[REFERÊNCIA TERRITORIAL]",
 };
 
 function normalizeKey(value: string): string {
