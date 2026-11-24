@@ -69,6 +69,34 @@ describe("sanitizeDocument", () => {
     expect(result.sections[0]?.content).not.toContain("Marina Exemplo");
   });
 
+  it("reuses one person pseudonym for a full name and a linked first-name reference", () => {
+    const source = [
+      "A proprietária, **Wesley Matos Cordeiro**, vulgo **\\"Cabeça\\"**.",
+      "Mais tarde, **Wesley (\\"Cabeça\\")** foi visto no local.",
+    ].join(" ");
+    const input = document(source);
+    const detected = detectSensitiveEntities(input);
+    const transformed = sanitizeDocument(input, detected.findings, "pseudonymize");
+    const personTokens = transformed.sections[0]?.content.match(/Pessoa_\d{3}/gu) ?? [];
+
+    expect(personTokens).toHaveLength(2);
+    expect(new Set(personTokens).size).toBe(1);
+    expect(transformed.identityWarnings).toHaveLength(0);
+  });
+
+  it("does not merge different full names that happen to share an alias", () => {
+    const source = [
+      "A proprietária, **Ana Silva**, vulgo **\\"Xis\\"**.",
+      "O balconista, **Bruno Souza**, vulgo **\\"Xis\\"**.",
+    ].join(" ");
+    const input = document(source);
+    const transformed = sanitizeDocument(input, detectSensitiveEntities(input).findings, "pseudonymize");
+    const personTokens = transformed.sections[0]?.content.match(/Pessoa_\d{3}/gu) ?? [];
+
+    expect(new Set(personTokens).size).toBe(2);
+    expect(transformed.identityWarnings.length).toBeGreaterThan(0);
+  });
+
   it("generalizes location and contact data to broad labels", () => {
     const source = "Rua das Palmeiras, nº 123; email teste@example.com";
     const result = sanitizeDocument(document(source), [
