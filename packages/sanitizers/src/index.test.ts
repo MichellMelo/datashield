@@ -173,6 +173,31 @@ describe("sanitizeDocument", () => {
     expect(input.sections[0]?.content).toBe(source);
   });
 
+  it("pseudonymizes contextual quasi-identifiers and clears both residual scans", () => {
+    const source = [
+      "Relatório de Campo nº 047/2026 — 2º Sgt PM",
+      "Honda CG 160 vermelha; VW Gol prata; R$ 1.200,00",
+      "a 50 metros do local, 15 minutos antes",
+      "mais seis roubos, sempre às sextas-feiras ou sábados",
+      "Entre 17 e 27/10/2026, com passagem em 2023",
+    ].join(". ");
+    const input = document(source);
+    const detected = detectSensitiveEntities(input);
+    const transformed = sanitizeDocument(input, detected.findings, "pseudonymize");
+
+    expect(transformed.sections[0]?.content).not.toContain("047/2026");
+    expect(transformed.sections[0]?.content).not.toContain("Honda CG 160 vermelha");
+    expect(transformed.sections[0]?.content).not.toContain("VW Gol prata");
+    expect(transformed.sections[0]?.content).not.toContain("R$ 1.200,00");
+    expect(transformed.sections[0]?.content).not.toContain("50 metros");
+    expect(transformed.sections[0]?.content).not.toContain("15 minutos antes");
+    expect(transformed.sections[0]?.content).not.toContain("mais seis roubos");
+    expect(transformed.sections[0]?.content).not.toContain("sexta-feira");
+    expect(transformed.sections[0]?.content).not.toContain("2023");
+    expect(detectSensitiveEntities({ ...input, sections: transformed.sections }).findings).toHaveLength(0);
+    expect(validateResidualContent(transformed.sections)).toHaveLength(0);
+  });
+
   it("rejects findings tied to an unknown section", () => {
     const source = "Marina";
     const item = { ...finding(source, "Marina", "PERSON"), sectionId: "missing" };
