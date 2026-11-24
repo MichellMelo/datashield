@@ -426,7 +426,7 @@ program.command("sanitize")
       reviewedRejectedCandidates: rejectedFindings.length,
       postTransformationCandidates: mergedResiduals.size,
       independentResidualCandidates: independentResiduals.length,
-      finalHumanReview: "REQUIRED_BEFORE_EXPORT",
+      finalHumanReview: "APPROVED_BY_OPERATOR_BEFORE_WRITE",
       validationStatus: rejectedFindings.length === 0 ? "PASS_NO_RESIDUAL_CANDIDATES" : "PASS_WITH_REVIEWED_REJECTIONS",
       warnings: [
         "Esta é uma transformação de texto revisada, não uma garantia de anonimização ou conformidade legal.",
